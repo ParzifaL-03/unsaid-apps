@@ -23,7 +23,12 @@ export const chipVariants = cva(
 export type ChipProps = ButtonHTMLAttributes<HTMLButtonElement> &
   VariantProps<typeof chipVariants>;
 
-export function Chip({ className, variant, type = "button", ...props }: ChipProps) {
+export function Chip({
+  className,
+  variant,
+  type = "button",
+  ...props
+}: ChipProps) {
   return (
     <button
       type={type}

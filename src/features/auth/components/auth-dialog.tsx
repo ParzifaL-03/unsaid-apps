@@ -1,8 +1,10 @@
 "use client";
 
 import { useState, type FormEvent } from "react";
-import { Alert, Button, Dialog, Input } from "@/components/ui";
+import { Mail } from "lucide-react";
+import { Alert, Button, Dialog, Input, buttonVariants } from "@/components/ui";
 import { useAuth } from "@/features/auth/auth-context";
+import { cn } from "@/lib/utils";
 
 const aliases = [
   "quiet comet",
@@ -50,6 +52,20 @@ export function AuthDialog({ open, onOpenChange, onSuccess }: AuthDialogProps) {
       description="Your email is only used to recover your account. Other people will only see your rotating alias."
     >
       <form onSubmit={submit} className="grid gap-5">
+        <a
+          href="/api/auth/google"
+          className={cn(
+            buttonVariants({ variant: "primary", fullWidth: true }),
+          )}
+        >
+          <Mail className="size-4" aria-hidden="true" />
+          Continue with Gmail
+        </a>
+        <div className="flex items-center gap-3 text-xs font-semibold uppercase tracking-[0.08em] text-muted">
+          <span className="h-px flex-1 bg-border" />
+          or
+          <span className="h-px flex-1 bg-border" />
+        </div>
         <Alert
           title="Anonymous to people, accountable to the platform"
           description="This keeps capsules, drafts, blocks, and moderation tied to you without exposing your real identity."

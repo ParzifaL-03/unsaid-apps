@@ -25,8 +25,7 @@ export function FeedView() {
         [post.alias, post.body, post.topic, post.mood].some((value) =>
           value.toLowerCase().includes(normalized),
         );
-      const matchesFilter =
-        activeFilter !== "Heavy" || post.mood === "heavy";
+      const matchesFilter = activeFilter !== "Heavy" || post.mood === "heavy";
       return matchesSearch && matchesFilter;
     });
   }, [activeFilter, posts, query]);

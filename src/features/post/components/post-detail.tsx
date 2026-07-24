@@ -22,10 +22,10 @@ const replies = [
 
 export function PostDetail({ id }: { id: string }) {
   const { posts, echoPost } = usePosts();
-  const post = useMemo(() => posts.find((item) => item.id === id) ?? posts[0], [
-    id,
-    posts,
-  ]);
+  const post = useMemo(
+    () => posts.find((item) => item.id === id) ?? posts[0],
+    [id, posts],
+  );
   const [reply, setReply] = useState("");
   const [sent, setSent] = useState(false);
 
@@ -46,7 +46,10 @@ export function PostDetail({ id }: { id: string }) {
           </h2>
           <div className="mt-4 grid gap-3">
             {replies.map((item) => (
-              <Card key={item.alias} className={`border-0 p-5 ${item.className}`}>
+              <Card
+                key={item.alias}
+                className={`border-0 p-5 ${item.className}`}
+              >
                 <p className="text-sm font-semibold">{item.alias}</p>
                 <p className="mt-3 text-sm leading-6">{item.body}</p>
               </Card>

@@ -64,8 +64,14 @@ export function Sidebar() {
               <div className="flex items-center gap-3">
                 <Avatar alias={account.alias} />
                 <div className="hidden min-w-0 xl:block">
-                  <p className="truncate text-sm font-semibold">{account.alias}</p>
-                  <p className="text-xs text-muted">Anonymous account</p>
+                  <p className="truncate text-sm font-semibold">
+                    {account.alias}
+                  </p>
+                  <p className="text-xs text-muted">
+                    {account.provider === "google"
+                      ? "Gmail account"
+                      : "Anonymous account"}
+                  </p>
                 </div>
               </div>
               <Button

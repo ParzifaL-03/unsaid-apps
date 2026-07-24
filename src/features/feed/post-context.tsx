@@ -2,6 +2,7 @@
 
 import {
   createContext,
+  useCallback,
   useContext,
   useEffect,
   useMemo,
@@ -12,7 +13,6 @@ import { seedPosts } from "@/features/feed/data/posts";
 import type { AnonymousPost, Mood } from "@/types/post";
 
 type NewPost = {
-  alias: string;
   body: string;
   topic: string;
   mood: Mood;
@@ -20,31 +20,34 @@ type NewPost = {
 
 type PostContextValue = {
   posts: AnonymousPost[];
-  addPost: (post: NewPost) => AnonymousPost;
+  isLoading: boolean;
+  addPost: (post: NewPost) => Promise<AnonymousPost>;
   echoPost: (id: string) => void;
 };
 
 const PostContext = createContext<PostContextValue | null>(null);
-const STORAGE_KEY = "unsaid-custom-posts";
 const ECHO_STORAGE_KEY = "unsaid-echo-counts";
 
 export function PostProvider({ children }: { children: ReactNode }) {
   const [customPosts, setCustomPosts] = useState<AnonymousPost[]>([]);
   const [echoCounts, setEchoCounts] = useState<Record<string, number>>({});
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     const frame = window.requestAnimationFrame(() => {
-      const saved = window.localStorage.getItem(STORAGE_KEY);
-      const savedEchoes = window.localStorage.getItem(ECHO_STORAGE_KEY);
-
-      if (saved) {
+      void (async () => {
         try {
-          setCustomPosts(JSON.parse(saved) as AnonymousPost[]);
-        } catch {
-          window.localStorage.removeItem(STORAGE_KEY);
+          const response = await fetch("/api/posts", { cache: "no-store" });
+          if (response.ok) {
+            const data = (await response.json()) as { posts: AnonymousPost[] };
+            setCustomPosts(data.posts);
+          }
+        } finally {
+          setIsLoading(false);
         }
-      }
+      })();
 
+      const savedEchoes = window.localStorage.getItem(ECHO_STORAGE_KEY);
       if (savedEchoes) {
         try {
           setEchoCounts(JSON.parse(savedEchoes) as Record<string, number>);
@@ -57,27 +60,33 @@ export function PostProvider({ children }: { children: ReactNode }) {
     return () => window.cancelAnimationFrame(frame);
   }, []);
 
+  const addPost = useCallback(async (post: NewPost) => {
+    const response = await fetch("/api/posts", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(post),
+    });
+
+    if (!response.ok) {
+      const data = (await response.json().catch(() => null)) as {
+        error?: string;
+      } | null;
+      throw new Error(data?.error ?? "Unable to publish anonymous post.");
+    }
+
+    const data = (await response.json()) as { post: AnonymousPost };
+    setCustomPosts((current) => [data.post, ...current]);
+    return data.post;
+  }, []);
+
   const value = useMemo<PostContextValue>(
     () => ({
       posts: [...customPosts, ...seedPosts].map((post) => ({
         ...post,
         echoes: post.echoes + (echoCounts[post.id] ?? 0),
       })),
-      addPost: (post) => {
-        const created: AnonymousPost = {
-          ...post,
-          id: `local-${Date.now()}`,
-          createdAt: "just now",
-          echoes: 0,
-          replies: 0,
-        };
-        setCustomPosts((current) => {
-          const next = [created, ...current];
-          window.localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
-          return next;
-        });
-        return created;
-      },
+      isLoading,
+      addPost,
       echoPost: (id) => {
         setEchoCounts((current) => {
           const next = { ...current, [id]: (current[id] ?? 0) + 1 };
@@ -86,7 +95,7 @@ export function PostProvider({ children }: { children: ReactNode }) {
         });
       },
     }),
-    [customPosts, echoCounts],
+    [addPost, customPosts, echoCounts, isLoading],
   );
 
   return <PostContext.Provider value={value}>{children}</PostContext.Provider>;

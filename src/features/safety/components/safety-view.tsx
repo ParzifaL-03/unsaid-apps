@@ -7,7 +7,12 @@ import { Alert, Avatar, Button, Card, Chip, Switch } from "@/components/ui";
 import { AuthDialog } from "@/features/auth/components/auth-dialog";
 import { useAuth } from "@/features/auth/auth-context";
 
-const aliases = ["quiet comet", "soft thunder", "golden static", "north window"];
+const aliases = [
+  "quiet comet",
+  "soft thunder",
+  "golden static",
+  "north window",
+];
 
 export function SafetyView() {
   const { account, signIn, isHydrated } = useAuth();
@@ -76,7 +81,9 @@ export function SafetyView() {
         </Card>
 
         <Card className="p-6 sm:p-7">
-          <h2 className="text-2xl font-bold tracking-[-0.5px]">Safety controls</h2>
+          <h2 className="text-2xl font-bold tracking-[-0.5px]">
+            Safety controls
+          </h2>
           <div className="mt-6 grid divide-y divide-border/50">
             <SettingRow
               label="Private replies"

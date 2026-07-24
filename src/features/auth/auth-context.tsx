@@ -12,6 +12,9 @@ import {
 export type AnonymousAccount = {
   alias: string;
   email: string;
+  provider?: "local" | "google";
+  name?: string;
+  image?: string;
 };
 
 type AuthContextValue = {
@@ -30,15 +33,35 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     const frame = window.requestAnimationFrame(() => {
-      const saved = window.localStorage.getItem(STORAGE_KEY);
-      if (saved) {
+      void (async () => {
         try {
-          setAccount(JSON.parse(saved) as AnonymousAccount);
+          const response = await fetch("/api/auth/session", {
+            cache: "no-store",
+          });
+          if (response.ok) {
+            const data = (await response.json()) as {
+              account: AnonymousAccount | null;
+            };
+            if (data.account) {
+              setAccount(data.account);
+              setIsHydrated(true);
+              return;
+            }
+          }
         } catch {
-          window.localStorage.removeItem(STORAGE_KEY);
+          // Fall back to local-only auth when the server session is unavailable.
         }
-      }
-      setIsHydrated(true);
+
+        const saved = window.localStorage.getItem(STORAGE_KEY);
+        if (saved) {
+          try {
+            setAccount(JSON.parse(saved) as AnonymousAccount);
+          } catch {
+            window.localStorage.removeItem(STORAGE_KEY);
+          }
+        }
+        setIsHydrated(true);
+      })();
     });
 
     return () => window.cancelAnimationFrame(frame);
@@ -49,12 +72,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       account,
       isHydrated,
       signIn: (nextAccount) => {
-        setAccount(nextAccount);
-        window.localStorage.setItem(STORAGE_KEY, JSON.stringify(nextAccount));
+        const localAccount = { ...nextAccount, provider: "local" as const };
+        setAccount(localAccount);
+        window.localStorage.setItem(STORAGE_KEY, JSON.stringify(localAccount));
       },
       signOut: () => {
         setAccount(null);
         window.localStorage.removeItem(STORAGE_KEY);
+        void fetch("/api/auth/sign-out", { method: "POST" });
       },
     }),
     [account, isHydrated],

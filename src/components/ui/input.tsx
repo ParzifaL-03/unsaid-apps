@@ -7,7 +7,14 @@ export type InputProps = InputHTMLAttributes<HTMLInputElement> & {
   error?: string;
 };
 
-export function Input({ label, hint, error, className, id, ...props }: InputProps) {
+export function Input({
+  label,
+  hint,
+  error,
+  className,
+  id,
+  ...props
+}: InputProps) {
   const inputId = id ?? props.name;
 
   return (

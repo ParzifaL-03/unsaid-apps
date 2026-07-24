@@ -4,15 +4,13 @@ import { cn } from "@/lib/utils";
 
 type AlertVariant = "info" | "success" | "warning" | "danger";
 
-const variants: Record<
-  AlertVariant,
-  { className: string; icon: typeof Info }
-> = {
-  info: { className: "bg-lavender text-white", icon: Info },
-  success: { className: "bg-teal text-white", icon: CheckCircle2 },
-  warning: { className: "bg-orange text-ink", icon: TriangleAlert },
-  danger: { className: "bg-red-600 text-white", icon: AlertCircle },
-};
+const variants: Record<AlertVariant, { className: string; icon: typeof Info }> =
+  {
+    info: { className: "bg-lavender text-white", icon: Info },
+    success: { className: "bg-teal text-white", icon: CheckCircle2 },
+    warning: { className: "bg-orange text-ink", icon: TriangleAlert },
+    danger: { className: "bg-red-600 text-white", icon: AlertCircle },
+  };
 
 export type AlertProps = HTMLAttributes<HTMLDivElement> & {
   title: string;

@@ -90,8 +90,7 @@ export function CapsulesView() {
       <div className="mt-5 grid gap-4 lg:grid-cols-3">
         {capsules
           .filter(
-            (capsule) =>
-              active === "All capsules" || capsule.type === active,
+            (capsule) => active === "All capsules" || capsule.type === active,
           )
           .map((capsule) => {
             const Icon = capsule.icon;

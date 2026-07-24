@@ -23,6 +23,7 @@ export function Composer() {
   const [mood, setMood] = useState<Mood>("quiet");
   const [error, setError] = useState("");
   const [draftSaved, setDraftSaved] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const modeDescription = useMemo(
     () =>
@@ -34,9 +35,9 @@ export function Composer() {
     [mode],
   );
 
-  const submit = (event: FormEvent<HTMLFormElement>) => {
+  const submit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    if (!account) {
+    if (!account || account.provider !== "google") {
       setAuthOpen(true);
       return;
     }
@@ -45,13 +46,23 @@ export function Composer() {
       return;
     }
 
-    addPost({
-      alias: account.alias,
-      body: body.trim(),
-      topic: topic.trim().replace(/^#/, "") || "unsaid",
-      mood,
-    });
-    router.push("/");
+    setIsSubmitting(true);
+    try {
+      await addPost({
+        body: body.trim(),
+        topic: topic.trim().replace(/^#/, "") || "unsaid",
+        mood,
+      });
+      router.push("/");
+    } catch (submitError) {
+      setError(
+        submitError instanceof Error
+          ? submitError.message
+          : "Unable to publish anonymous post.",
+      );
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -133,10 +144,10 @@ export function Composer() {
             className="max-w-3xl"
           />
 
-          {!account ? (
+          {!account || account.provider !== "google" ? (
             <Alert
-              title="An account is required to publish"
-              description="Reading stays open to everyone. An anonymous account lets you manage posts, capsules, blocks, and reports."
+              title="Gmail login is required to publish"
+              description="Reading stays open to everyone. Gmail login keeps private accountability while posts show only your alias."
               variant="warning"
               className="max-w-3xl"
             />
@@ -150,8 +161,12 @@ export function Composer() {
           )}
 
           <div className="flex flex-col gap-3 sm:flex-row">
-            <Button type="submit" size="lg">
-              {account ? "Post anonymously" : "Create account to post"}
+            <Button type="submit" size="lg" disabled={isSubmitting}>
+              {isSubmitting
+                ? "Posting..."
+                : account?.provider === "google"
+                  ? "Post anonymously"
+                  : "Login with Gmail to post"}
             </Button>
             <Button
               type="button"

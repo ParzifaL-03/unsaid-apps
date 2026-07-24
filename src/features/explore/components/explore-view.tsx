@@ -9,7 +9,8 @@ const topics = [
   {
     title: "Things never said",
     count: "12.8k expressions",
-    description: "Words held back from family, friends, and people we once loved.",
+    description:
+      "Words held back from family, friends, and people we once loved.",
     className: "bg-coral",
   },
   {
@@ -43,7 +44,7 @@ export function ExploreView() {
       <PageHeader
         eyebrow="Explore"
         title="Find what people can't say elsewhere"
-        description="Browse moods, anonymous communities, and open letters."
+        description="Browse moods and anonymous communities."
       />
 
       <div className="relative mt-7 max-w-3xl">
@@ -63,7 +64,9 @@ export function ExploreView() {
             key={topic.title}
             className={`min-h-[260px] border-0 p-6 ${topic.className}`}
           >
-            <h2 className="text-2xl font-bold tracking-[-0.5px]">{topic.title}</h2>
+            <h2 className="text-2xl font-bold tracking-[-0.5px]">
+              {topic.title}
+            </h2>
             <p className="mt-3 text-sm font-semibold">{topic.count}</p>
             <p className="mt-8 max-w-xs text-sm leading-6 opacity-85">
               {topic.description}
@@ -71,20 +74,6 @@ export function ExploreView() {
           </Card>
         ))}
       </div>
-
-      <section id="open-letters" className="mt-10">
-        <h2 className="text-2xl font-bold tracking-[-0.5px]">
-          Open letters trending now
-        </h2>
-        <Card className="mt-4 border-0 bg-lavender p-7 text-white sm:p-9">
-          <p className="text-xs font-semibold uppercase tracking-[0.08em]">
-            To the friend I stopped calling
-          </p>
-          <blockquote className="mt-6 max-w-4xl text-2xl font-bold leading-9 tracking-[-0.5px] sm:text-3xl">
-            “I hope you know the silence was never because I stopped caring.”
-          </blockquote>
-        </Card>
-      </section>
     </div>
   );
 }

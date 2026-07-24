@@ -1,14 +1,24 @@
 import type { HTMLAttributes } from "react";
 import { cn, initials } from "@/lib/utils";
 
-const colors = ["bg-coral", "bg-orange", "bg-teal text-white", "bg-lavender text-white"];
+const colors = [
+  "bg-coral",
+  "bg-orange",
+  "bg-teal text-white",
+  "bg-lavender text-white",
+];
 
 export type AvatarProps = HTMLAttributes<HTMLDivElement> & {
   alias: string;
   size?: "sm" | "md" | "lg";
 };
 
-export function Avatar({ alias, size = "md", className, ...props }: AvatarProps) {
+export function Avatar({
+  alias,
+  size = "md",
+  className,
+  ...props
+}: AvatarProps) {
   const color = colors[alias.length % colors.length];
   const sizeClass = {
     sm: "size-9 text-[10px]",

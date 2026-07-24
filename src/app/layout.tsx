@@ -13,7 +13,9 @@ export const metadata: Metadata = {
     "An anonymous social space for honest expressions, open letters, and messages sealed for the future.",
 };
 
-export default function RootLayout({ children }: Readonly<{ children: ReactNode }>) {
+export default function RootLayout({
+  children,
+}: Readonly<{ children: ReactNode }>) {
   return (
     <html lang="en">
       <body>
