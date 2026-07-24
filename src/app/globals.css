@@ -1,0 +1,99 @@
+@import "@fontsource-variable/plus-jakarta-sans";
+@import "tailwindcss";
+
+:root {
+  --color-ink: #171717;
+  --color-white: #ffffff;
+  --color-cream: #f7f4d8;
+  --color-canvas-pink: #f2d7e9;
+  --color-coral: #f86f8e;
+  --color-teal: #0f766e;
+  --color-orange: #ffad33;
+  --color-lavender: #7568e8;
+  --color-gray: #7b7b76;
+  --color-danger: #d94f5c;
+
+  --background-canvas: var(--color-canvas-pink);
+  --background-surface: var(--color-cream);
+  --background-inverse: var(--color-ink);
+  --text-primary: var(--color-ink);
+  --text-secondary: var(--color-gray);
+  --text-on-accent: var(--color-ink);
+  --border-default: color-mix(in srgb, var(--color-gray) 72%, transparent);
+  --accent-coral: var(--color-coral);
+  --accent-teal: var(--color-teal);
+  --accent-orange: var(--color-orange);
+  --accent-lavender: var(--color-lavender);
+
+  --radius-token-sm: 8px;
+  --radius-token-md: 16px;
+  --radius-token-lg: 24px;
+  --radius-token-pill: 999px;
+}
+
+@theme inline {
+  --font-sans: "Plus Jakarta Sans Variable", "Plus Jakarta Sans", ui-sans-serif,
+    system-ui, sans-serif;
+  --color-canvas: var(--background-canvas);
+  --color-surface: var(--background-surface);
+  --color-inverse: var(--background-inverse);
+  --color-ink: var(--text-primary);
+  --color-muted: var(--text-secondary);
+  --color-border: var(--border-default);
+  --color-coral: var(--accent-coral);
+  --color-teal: var(--accent-teal);
+  --color-orange: var(--accent-orange);
+  --color-lavender: var(--accent-lavender);
+  --radius-sm: var(--radius-token-sm);
+  --radius-md: var(--radius-token-md);
+  --radius-lg: var(--radius-token-lg);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  background: var(--background-surface);
+}
+
+body {
+  min-height: 100vh;
+  margin: 0;
+  background: var(--background-canvas);
+  color: var(--text-primary);
+  font-family: "Plus Jakarta Sans Variable", "Plus Jakarta Sans", sans-serif;
+  text-rendering: optimizeLegibility;
+}
+
+button,
+input,
+textarea {
+  font: inherit;
+}
+
+button,
+a {
+  -webkit-tap-highlight-color: transparent;
+}
+
+::selection {
+  background: var(--accent-coral);
+  color: var(--text-primary);
+}
+
+:focus-visible {
+  outline: 3px solid var(--accent-lavender);
+  outline-offset: 3px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+  }
+}
