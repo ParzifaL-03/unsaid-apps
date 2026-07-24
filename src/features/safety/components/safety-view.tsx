@@ -7,27 +7,16 @@ import { Alert, Avatar, Button, Card, Chip, Switch } from "@/components/ui";
 import { AuthDialog } from "@/features/auth/components/auth-dialog";
 import { useAuth } from "@/features/auth/auth-context";
 
-const aliases = [
-  "quiet comet",
-  "soft thunder",
-  "golden static",
-  "north window",
-];
-
 export function SafetyView() {
-  const { account, signIn, isHydrated } = useAuth();
+  const { account, rotateAlias: rotateAccountAlias, isHydrated } = useAuth();
   const [authOpen, setAuthOpen] = useState(false);
   const [privateReplies, setPrivateReplies] = useState(true);
   const [sensitiveFilter, setSensitiveFilter] = useState(true);
   const [autoDelete, setAutoDelete] = useState(false);
 
-  const rotateAlias = () => {
+  const handleRotateAlias = () => {
     if (!account) return;
-    const current = aliases.indexOf(account.alias);
-    signIn({
-      ...account,
-      alias: aliases[(current + 1 + aliases.length) % aliases.length],
-    });
+    void rotateAccountAlias();
   };
 
   if (isHydrated && !account) {
@@ -74,7 +63,7 @@ export function SafetyView() {
             <br />
             42 expressions • 318 echoes
           </p>
-          <Button variant="ghost" className="mt-6" onClick={rotateAlias}>
+          <Button variant="ghost" className="mt-6" onClick={handleRotateAlias}>
             <RotateCcw className="size-4" />
             Rotate alias
           </Button>

@@ -2,30 +2,30 @@
 
 import {
   createContext,
+  useCallback,
   useContext,
   useEffect,
   useMemo,
   useState,
   type ReactNode,
 } from "react";
+import {
+  aliasResponseSchema,
+  sessionResponseSchema,
+  type AuthAccount,
+} from "@/contracts/auth";
+import { getApiError } from "@/lib/api-client";
 
-export type AnonymousAccount = {
-  alias: string;
-  email: string;
-  provider?: "local" | "google";
-  name?: string;
-  image?: string;
-};
+export type AnonymousAccount = AuthAccount;
 
 type AuthContextValue = {
   account: AnonymousAccount | null;
   isHydrated: boolean;
-  signIn: (account: AnonymousAccount) => void;
-  signOut: () => void;
+  rotateAlias: () => Promise<void>;
+  signOut: () => Promise<void>;
 };
 
 const AuthContext = createContext<AuthContextValue | null>(null);
-const STORAGE_KEY = "unsaid-account";
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [account, setAccount] = useState<AnonymousAccount | null>(null);
@@ -39,50 +39,39 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             cache: "no-store",
           });
           if (response.ok) {
-            const data = (await response.json()) as {
-              account: AnonymousAccount | null;
-            };
-            if (data.account) {
-              setAccount(data.account);
-              setIsHydrated(true);
-              return;
-            }
+            const data = sessionResponseSchema.parse(await response.json());
+            setAccount(data.account);
           }
-        } catch {
-          // Fall back to local-only auth when the server session is unavailable.
+        } finally {
+          setIsHydrated(true);
         }
-
-        const saved = window.localStorage.getItem(STORAGE_KEY);
-        if (saved) {
-          try {
-            setAccount(JSON.parse(saved) as AnonymousAccount);
-          } catch {
-            window.localStorage.removeItem(STORAGE_KEY);
-          }
-        }
-        setIsHydrated(true);
       })();
     });
 
     return () => window.cancelAnimationFrame(frame);
   }, []);
 
+  const rotateAlias = useCallback(async () => {
+    const response = await fetch("/api/me/alias", { method: "POST" });
+    if (!response.ok) {
+      throw new Error(await getApiError(response, "Unable to rotate alias."));
+    }
+    setAccount(aliasResponseSchema.parse(await response.json()).account);
+  }, []);
+
+  const signOut = useCallback(async () => {
+    await fetch("/api/auth/sign-out", { method: "POST" });
+    setAccount(null);
+  }, []);
+
   const value = useMemo<AuthContextValue>(
     () => ({
       account,
       isHydrated,
-      signIn: (nextAccount) => {
-        const localAccount = { ...nextAccount, provider: "local" as const };
-        setAccount(localAccount);
-        window.localStorage.setItem(STORAGE_KEY, JSON.stringify(localAccount));
-      },
-      signOut: () => {
-        setAccount(null);
-        window.localStorage.removeItem(STORAGE_KEY);
-        void fetch("/api/auth/sign-out", { method: "POST" });
-      },
+      rotateAlias,
+      signOut,
     }),
-    [account, isHydrated],
+    [account, isHydrated, rotateAlias, signOut],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

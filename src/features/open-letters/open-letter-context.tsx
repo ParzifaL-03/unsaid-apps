@@ -9,6 +9,11 @@ import {
   useState,
   type ReactNode,
 } from "react";
+import {
+  openLetterResponseSchema,
+  openLettersResponseSchema,
+} from "@/contracts/content";
+import { getApiError } from "@/lib/api-client";
 import type { OpenLetter } from "@/types/open-letter";
 
 type NewOpenLetter = {
@@ -38,7 +43,7 @@ export function OpenLetterProvider({ children }: { children: ReactNode }) {
             cache: "no-store",
           });
           if (response.ok) {
-            const data = (await response.json()) as { letters: OpenLetter[] };
+            const data = openLettersResponseSchema.parse(await response.json());
             setLetters(data.letters);
           }
         } finally {
@@ -58,13 +63,12 @@ export function OpenLetterProvider({ children }: { children: ReactNode }) {
     });
 
     if (!response.ok) {
-      const data = (await response.json().catch(() => null)) as {
-        error?: string;
-      } | null;
-      throw new Error(data?.error ?? "Unable to send open letter.");
+      throw new Error(
+        await getApiError(response, "Unable to send open letter."),
+      );
     }
 
-    const data = (await response.json()) as { letter: OpenLetter };
+    const data = openLetterResponseSchema.parse(await response.json());
     setLetters((current) => [data.letter, ...current]);
     return data.letter;
   }, []);

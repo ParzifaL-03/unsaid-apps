@@ -139,7 +139,7 @@ export function OpenLettersView() {
             {sent ? (
               <Alert
                 title="Open letter saved"
-                description="The recipient email is attached to the letter, but the sender shown in the app remains anonymous."
+                description="The recipient email is hashed for private matching, while the sender shown in the app remains anonymous."
                 variant="success"
               />
             ) : null}
@@ -198,7 +198,7 @@ export function OpenLettersView() {
                   letters.map((letter) => (
                     <Card key={letter.id} className="p-4">
                       <p className="truncate text-xs font-semibold uppercase tracking-[0.08em] text-muted">
-                        To {letter.recipientEmail}
+                        To {letter.recipientLabel}
                       </p>
                       <h3 className="mt-2 text-base font-bold">
                         {letter.subject}

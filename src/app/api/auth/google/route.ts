@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createOauthState, setOauthStateCookie } from "@/lib/auth-session";
+import { createOauthState, setOauthStateCookie } from "@/server/auth/session";
 
 function getBaseUrl(request: NextRequest) {
   return process.env.NEXT_PUBLIC_APP_URL ?? request.nextUrl.origin;

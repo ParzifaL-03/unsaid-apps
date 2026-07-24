@@ -1,7 +1,15 @@
-import { NextRequest, NextResponse } from "next/server";
-import { SESSION_COOKIE, readSession } from "@/lib/auth-session";
+import { NextRequest } from "next/server";
+import { sessionResponseSchema } from "@/contracts/auth";
+import { getSessionAccount } from "@/server/auth/session";
+import { handleApiError, jsonResponse } from "@/server/http";
 
-export function GET(request: NextRequest) {
-  const account = readSession(request.cookies.get(SESSION_COOKIE)?.value);
-  return NextResponse.json({ account });
+export async function GET(request: NextRequest) {
+  try {
+    const session = await getSessionAccount(request);
+    return jsonResponse(sessionResponseSchema, {
+      account: session?.account ?? null,
+    });
+  } catch (error) {
+    return handleApiError(error);
+  }
 }

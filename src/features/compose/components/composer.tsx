@@ -3,11 +3,13 @@
 import { useRouter } from "next/navigation";
 import { CalendarClock, LockKeyhole, Send, ShieldCheck } from "lucide-react";
 import { useMemo, useState, type FormEvent } from "react";
+import { capsuleResponseSchema } from "@/contracts/content";
 import { PageHeader } from "@/components/shared/page-header";
 import { Alert, Button, Card, Chip, Input, Textarea } from "@/components/ui";
 import { AuthDialog } from "@/features/auth/components/auth-dialog";
 import { useAuth } from "@/features/auth/auth-context";
 import { usePosts } from "@/features/feed/post-context";
+import { getApiError } from "@/lib/api-client";
 import type { Mood } from "@/types/post";
 
 type PublishMode = "now" | "schedule" | "seal";
@@ -22,6 +24,7 @@ export function Composer() {
   const [topic, setTopic] = useState("relationships");
   const [mood, setMood] = useState<Mood>("quiet");
   const [error, setError] = useState("");
+  const [releaseAt, setReleaseAt] = useState("");
   const [draftSaved, setDraftSaved] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -45,15 +48,40 @@ export function Composer() {
       setError("Write at least 12 characters so the expression has context.");
       return;
     }
+    if (mode !== "now" && !releaseAt) {
+      setError("Choose when this capsule should unlock.");
+      return;
+    }
 
     setIsSubmitting(true);
     try {
-      await addPost({
-        body: body.trim(),
-        topic: topic.trim().replace(/^#/, "") || "unsaid",
-        mood,
-      });
-      router.push("/");
+      if (mode === "now") {
+        await addPost({
+          body: body.trim(),
+          topic: topic.trim().replace(/^#/, "") || "unsaid",
+          mood,
+        });
+        router.push("/");
+      } else {
+        const response = await fetch("/api/capsules", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            body: body.trim(),
+            topic: topic.trim().replace(/^#/, "") || "unsaid",
+            mood,
+            unlockAt: new Date(releaseAt).toISOString(),
+            visibility: mode === "seal" ? "private" : "public",
+          }),
+        });
+        if (!response.ok) {
+          throw new Error(
+            await getApiError(response, "Unable to save this capsule."),
+          );
+        }
+        capsuleResponseSchema.parse(await response.json());
+        router.push("/capsules");
+      }
     } catch (submitError) {
       setError(
         submitError instanceof Error
@@ -137,6 +165,18 @@ export function Composer() {
             </label>
           </div>
 
+          {mode !== "now" ? (
+            <Input
+              label={mode === "seal" ? "Unlock date" : "Publish date"}
+              type="datetime-local"
+              value={releaseAt}
+              onChange={(event) => {
+                setReleaseAt(event.target.value);
+                if (error) setError("");
+              }}
+            />
+          ) : null}
+
           <Alert
             title="Anonymous by default"
             description="Avoid names, addresses, and identifying details. Reply controls can be changed before posting."
@@ -163,10 +203,14 @@ export function Composer() {
           <div className="flex flex-col gap-3 sm:flex-row">
             <Button type="submit" size="lg" disabled={isSubmitting}>
               {isSubmitting
-                ? "Posting..."
-                : account?.provider === "google"
-                  ? "Post anonymously"
-                  : "Login with Gmail to post"}
+                ? "Saving..."
+                : account?.provider !== "google"
+                  ? "Login with Gmail to continue"
+                  : mode === "now"
+                    ? "Post anonymously"
+                    : mode === "seal"
+                      ? "Seal capsule"
+                      : "Schedule expression"}
             </Button>
             <Button
               type="button"
@@ -175,7 +219,7 @@ export function Composer() {
               onClick={() => {
                 window.localStorage.setItem(
                   "unsaid-draft",
-                  JSON.stringify({ body, topic, mood, mode }),
+                  JSON.stringify({ body, topic, mood, mode, releaseAt }),
                 );
                 setDraftSaved(true);
               }}

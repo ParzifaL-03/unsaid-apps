@@ -1,33 +1,18 @@
-import { createHash } from "crypto";
 import { NextRequest, NextResponse } from "next/server";
 import {
   OAUTH_STATE_COOKIE,
   clearAuthCookies,
+  createDatabaseSession,
   readOauthState,
   setSessionCookie,
-} from "@/lib/auth-session";
-import { upsertGoogleUser } from "@/lib/mongo/auth-users";
-
-type GoogleUserInfo = {
-  sub?: string;
-  email?: string;
-  email_verified?: boolean;
-  name?: string;
-  picture?: string;
-};
+} from "@/server/auth/session";
+import {
+  googleUserInfoSchema,
+  upsertGoogleUser,
+} from "@/server/services/auth.service";
 
 function getBaseUrl(request: NextRequest) {
   return process.env.NEXT_PUBLIC_APP_URL ?? request.nextUrl.origin;
-}
-
-const aliasAdjectives = ["quiet", "paper", "soft", "north", "golden"];
-const aliasNouns = ["comet", "moon", "thunder", "window", "static"];
-
-function aliasFromEmail(email: string) {
-  const hash = createHash("sha256").update(email.toLowerCase()).digest();
-  const adjective = aliasAdjectives[hash[0] % aliasAdjectives.length];
-  const noun = aliasNouns[hash[1] % aliasNouns.length];
-  return `${adjective} ${noun}`;
 }
 
 function redirectWithError(request: NextRequest, error: string) {
@@ -72,8 +57,15 @@ export async function GET(request: NextRequest) {
     return response;
   }
 
-  const token = (await tokenResponse.json()) as { access_token?: string };
-  if (!token.access_token) {
+  const token = (await tokenResponse.json()) as unknown;
+  const accessToken =
+    typeof token === "object" &&
+    token !== null &&
+    "access_token" in token &&
+    typeof token.access_token === "string"
+      ? token.access_token
+      : null;
+  if (!accessToken) {
     const response = redirectWithError(request, "google-token-missing");
     clearAuthCookies(response);
     return response;
@@ -82,7 +74,7 @@ export async function GET(request: NextRequest) {
   const userResponse = await fetch(
     "https://openidconnect.googleapis.com/v1/userinfo",
     {
-      headers: { Authorization: `Bearer ${token.access_token}` },
+      headers: { Authorization: `Bearer ${accessToken}` },
     },
   );
 
@@ -92,23 +84,18 @@ export async function GET(request: NextRequest) {
     return response;
   }
 
-  const user = (await userResponse.json()) as GoogleUserInfo;
-  if (!user.sub || !user.email || user.email_verified === false) {
+  const userResult = googleUserInfoSchema.safeParse(await userResponse.json());
+  if (!userResult.success || userResult.data.email_verified === false) {
     const response = redirectWithError(request, "google-email-unverified");
     clearAuthCookies(response);
     return response;
   }
 
   let databaseUser;
+  let session;
   try {
-    databaseUser = await upsertGoogleUser({
-      email: user.email,
-      emailVerified: user.email_verified ?? true,
-      providerAccountId: user.sub,
-      alias: aliasFromEmail(user.email),
-      name: user.name,
-      image: user.picture,
-    });
+    databaseUser = await upsertGoogleUser(userResult.data);
+    session = await createDatabaseSession(request, databaseUser._id.toString());
   } catch {
     const response = redirectWithError(request, "500");
     clearAuthCookies(response);
@@ -117,13 +104,6 @@ export async function GET(request: NextRequest) {
 
   const response = NextResponse.redirect(new URL("/", request.url));
   clearAuthCookies(response);
-  setSessionCookie(response, request, {
-    userId: databaseUser._id.toString(),
-    alias: aliasFromEmail(user.email),
-    email: user.email,
-    provider: "google",
-    name: user.name,
-    image: user.picture,
-  });
+  setSessionCookie(response, request, session);
   return response;
 }

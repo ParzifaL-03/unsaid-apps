@@ -1,22 +1,20 @@
 import { NextRequest } from "next/server";
 import {
-  createOpenLetterInputSchema,
-  openLetterResponseSchema,
-  openLettersResponseSchema,
+  capsuleResponseSchema,
+  capsulesResponseSchema,
+  createCapsuleInputSchema,
 } from "@/contracts/content";
 import { requireSessionUser } from "@/server/auth/session";
 import { handleApiError, jsonResponse, parseJson } from "@/server/http";
-import {
-  createLetter,
-  listPublicLetters,
-} from "@/server/services/letter.service";
+import { createCapsule, listCapsules } from "@/server/services/capsule.service";
 
 export const runtime = "nodejs";
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
-    return jsonResponse(openLettersResponseSchema, {
-      letters: await listPublicLetters(),
+    const user = await requireSessionUser(request);
+    return jsonResponse(capsulesResponseSchema, {
+      capsules: await listCapsules(user),
     });
   } catch (error) {
     return handleApiError(error);
@@ -26,10 +24,10 @@ export async function GET() {
 export async function POST(request: NextRequest) {
   try {
     const user = await requireSessionUser(request);
-    const input = await parseJson(request, createOpenLetterInputSchema);
+    const input = await parseJson(request, createCapsuleInputSchema);
     return jsonResponse(
-      openLetterResponseSchema,
-      { letter: await createLetter(user, input) },
+      capsuleResponseSchema,
+      { capsule: await createCapsule(user, input) },
       201,
     );
   } catch (error) {
