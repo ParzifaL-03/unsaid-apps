@@ -10,19 +10,18 @@ import {
   googleUserInfoSchema,
   upsertGoogleUser,
 } from "@/server/services/auth.service";
-
-function getBaseUrl(request: NextRequest) {
-  return process.env.NEXT_PUBLIC_APP_URL ?? request.nextUrl.origin;
-}
+import { getGoogleEnv } from "@/server/env";
 
 function redirectWithError(request: NextRequest, error: string) {
   return NextResponse.redirect(new URL(`/?auth=${error}`, request.url));
 }
 
 export async function GET(request: NextRequest) {
-  const clientId = process.env.GOOGLE_CLIENT_ID;
-  const clientSecret = process.env.GOOGLE_CLIENT_SECRET;
-  if (!clientId || !clientSecret) {
+  let config;
+  try {
+    config = getGoogleEnv();
+  } catch (error) {
+    console.error("Invalid Google OAuth configuration:", error);
     return redirectWithError(request, "missing-google-config");
   }
 
@@ -38,18 +37,29 @@ export async function GET(request: NextRequest) {
     return response;
   }
 
-  const redirectUri = new URL("/api/auth/google/callback", getBaseUrl(request));
-  const tokenResponse = await fetch("https://oauth2.googleapis.com/token", {
-    method: "POST",
-    headers: { "Content-Type": "application/x-www-form-urlencoded" },
-    body: new URLSearchParams({
-      client_id: clientId,
-      client_secret: clientSecret,
-      code,
-      grant_type: "authorization_code",
-      redirect_uri: redirectUri.toString(),
-    }),
-  });
+  const redirectUri = new URL(
+    "/api/auth/google/callback",
+    config.NEXT_PUBLIC_APP_URL ?? request.nextUrl.origin,
+  );
+  let tokenResponse;
+  try {
+    tokenResponse = await fetch("https://oauth2.googleapis.com/token", {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body: new URLSearchParams({
+        client_id: config.GOOGLE_CLIENT_ID,
+        client_secret: config.GOOGLE_CLIENT_SECRET,
+        code,
+        grant_type: "authorization_code",
+        redirect_uri: redirectUri.toString(),
+      }),
+    });
+  } catch (error) {
+    console.error("Google token request failed:", error);
+    const response = redirectWithError(request, "google-token-failed");
+    clearAuthCookies(response);
+    return response;
+  }
 
   if (!tokenResponse.ok) {
     const response = redirectWithError(request, "google-token-failed");
@@ -71,12 +81,20 @@ export async function GET(request: NextRequest) {
     return response;
   }
 
-  const userResponse = await fetch(
-    "https://openidconnect.googleapis.com/v1/userinfo",
-    {
-      headers: { Authorization: `Bearer ${accessToken}` },
-    },
-  );
+  let userResponse;
+  try {
+    userResponse = await fetch(
+      "https://openidconnect.googleapis.com/v1/userinfo",
+      {
+        headers: { Authorization: `Bearer ${accessToken}` },
+      },
+    );
+  } catch (error) {
+    console.error("Google user request failed:", error);
+    const response = redirectWithError(request, "google-user-failed");
+    clearAuthCookies(response);
+    return response;
+  }
 
   if (!userResponse.ok) {
     const response = redirectWithError(request, "google-user-failed");

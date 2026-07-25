@@ -3,10 +3,10 @@ import type { z } from "zod";
 import type { createOpenLetterInputSchema } from "@/contracts/content";
 import { connectMongo } from "@/server/db/connect";
 import { LetterModel, UserModel, type UserDocument } from "@/server/db/models";
-import { getAuthEnv } from "@/server/env";
+import { getAuthSecretEnv } from "@/server/env";
 
 function emailHash(email: string) {
-  return createHmac("sha256", getAuthEnv().AUTH_SECRET)
+  return createHmac("sha256", getAuthSecretEnv().AUTH_SECRET)
     .update(email.toLowerCase())
     .digest("hex");
 }

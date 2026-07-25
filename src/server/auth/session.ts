@@ -3,7 +3,7 @@ import type { NextRequest, NextResponse } from "next/server";
 import type { AuthAccount } from "@/contracts/auth";
 import { connectMongo } from "@/server/db/connect";
 import { SessionModel, UserModel } from "@/server/db/models";
-import { getAuthEnv } from "@/server/env";
+import { getAuthSecretEnv, getSessionEnv } from "@/server/env";
 import { ApiError } from "@/server/http";
 
 export const SESSION_COOKIE = "unsaid-session";
@@ -20,7 +20,7 @@ function hashToken(value: string) {
 
 function sign(value: string) {
   return base64Url(
-    createHmac("sha256", getAuthEnv().AUTH_SECRET).update(value).digest(),
+    createHmac("sha256", getAuthSecretEnv().AUTH_SECRET).update(value).digest(),
   );
 }
 
@@ -89,7 +89,7 @@ export async function createDatabaseSession(
   userId: string,
 ) {
   await connectMongo();
-  const { SESSION_MAX_AGE_DAYS, AUTH_SECRET } = getAuthEnv();
+  const { SESSION_MAX_AGE_DAYS, AUTH_SECRET } = getSessionEnv();
   const token = base64Url(randomBytes(32));
   const forwardedFor = request.headers.get("x-forwarded-for")?.split(",")[0];
   const expiresAt = new Date(
