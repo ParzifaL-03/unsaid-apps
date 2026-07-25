@@ -44,7 +44,7 @@ export function FeedView({ authError }: { authError?: string }) {
             title="Google login could not start"
             description={
               authError === "missing-google-config"
-                ? "Complete GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, AUTH_SECRET, and NEXT_PUBLIC_APP_URL in .env.local, then restart the dev server."
+                ? "Complete GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, and AUTH_SECRET in the unsaid-be environment, then restart the API."
                 : "Check the development terminal for the OAuth error and try again."
             }
             variant="danger"
