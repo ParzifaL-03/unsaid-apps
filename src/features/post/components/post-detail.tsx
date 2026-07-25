@@ -14,7 +14,7 @@ import { Alert, Button, Card, Textarea } from "@/components/ui";
 import { AuthDialog } from "@/features/auth/components/auth-dialog";
 import { useAuth } from "@/features/auth/auth-context";
 import { usePosts } from "@/features/feed/post-context";
-import { getApiError } from "@/lib/api-client";
+import { apiFetch, getApiError } from "@/lib/api-client";
 import type { AnonymousPost } from "@/types/post";
 
 export function PostDetail({ id }: { id: string }) {
@@ -38,11 +38,11 @@ export function PostDetail({ id }: { id: string }) {
     void (async () => {
       try {
         const [postResponse, repliesResponse] = await Promise.all([
-          fetch(`/api/posts/${id}`, {
+          apiFetch(`/posts/${id}`, {
             cache: "no-store",
             signal: controller.signal,
           }),
-          fetch(`/api/posts/${id}/replies`, {
+          apiFetch(`/posts/${id}/replies`, {
             cache: "no-store",
             signal: controller.signal,
           }),
@@ -82,7 +82,7 @@ export function PostDetail({ id }: { id: string }) {
     setIsSubmitting(true);
     setError("");
     try {
-      const response = await fetch(`/api/posts/${id}/replies`, {
+      const response = await apiFetch(`/posts/${id}/replies`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ body: reply, visibility }),

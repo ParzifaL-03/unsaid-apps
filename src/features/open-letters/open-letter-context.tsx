@@ -13,7 +13,7 @@ import {
   openLetterResponseSchema,
   openLettersResponseSchema,
 } from "@/contracts/content";
-import { getApiError } from "@/lib/api-client";
+import { apiFetch, getApiError } from "@/lib/api-client";
 import type { OpenLetter } from "@/types/open-letter";
 
 type NewOpenLetter = {
@@ -39,7 +39,7 @@ export function OpenLetterProvider({ children }: { children: ReactNode }) {
     const frame = window.requestAnimationFrame(() => {
       void (async () => {
         try {
-          const response = await fetch("/api/open-letters", {
+          const response = await apiFetch("/open-letters", {
             cache: "no-store",
           });
           if (response.ok) {
@@ -56,7 +56,7 @@ export function OpenLetterProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const addLetter = useCallback(async (letter: NewOpenLetter) => {
-    const response = await fetch("/api/open-letters", {
+    const response = await apiFetch("/open-letters", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(letter),

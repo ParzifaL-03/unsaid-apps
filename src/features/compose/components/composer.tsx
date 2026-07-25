@@ -9,7 +9,7 @@ import { Alert, Button, Card, Chip, Input, Textarea } from "@/components/ui";
 import { AuthDialog } from "@/features/auth/components/auth-dialog";
 import { useAuth } from "@/features/auth/auth-context";
 import { usePosts } from "@/features/feed/post-context";
-import { getApiError } from "@/lib/api-client";
+import { apiFetch, getApiError } from "@/lib/api-client";
 import type { Mood } from "@/types/post";
 
 type PublishMode = "now" | "schedule" | "seal";
@@ -63,7 +63,7 @@ export function Composer() {
         });
         router.push("/");
       } else {
-        const response = await fetch("/api/capsules", {
+        const response = await apiFetch("/capsules", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({

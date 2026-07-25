@@ -2,6 +2,7 @@
 
 import { Mail } from "lucide-react";
 import { Alert, Dialog, buttonVariants } from "@/components/ui";
+import { apiUrl } from "@/lib/api-client";
 import { cn } from "@/lib/utils";
 
 export type AuthDialogProps = {
@@ -25,7 +26,7 @@ export function AuthDialog({ open, onOpenChange }: AuthDialogProps) {
           variant="info"
         />
         <a
-          href="/api/auth/google"
+          href={apiUrl("/auth/google")}
           className={cn(
             buttonVariants({ variant: "primary", fullWidth: true }),
           )}

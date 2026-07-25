@@ -14,7 +14,7 @@ import {
   postsResponseSchema,
   reactionResponseSchema,
 } from "@/contracts/content";
-import { getApiError } from "@/lib/api-client";
+import { apiFetch, getApiError } from "@/lib/api-client";
 import type { AnonymousPost, Mood } from "@/types/post";
 
 type NewPost = {
@@ -40,7 +40,7 @@ export function PostProvider({ children }: { children: ReactNode }) {
     const frame = window.requestAnimationFrame(() => {
       void (async () => {
         try {
-          const response = await fetch("/api/posts", { cache: "no-store" });
+          const response = await apiFetch("/posts", { cache: "no-store" });
           if (response.ok) {
             const data = postsResponseSchema.parse(await response.json());
             setCustomPosts(data.posts);
@@ -55,7 +55,7 @@ export function PostProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const addPost = useCallback(async (post: NewPost) => {
-    const response = await fetch("/api/posts", {
+    const response = await apiFetch("/posts", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(post),
@@ -73,7 +73,7 @@ export function PostProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const echoPost = useCallback(async (id: string) => {
-    const response = await fetch(`/api/posts/${id}/reactions`, {
+    const response = await apiFetch(`/posts/${id}/reactions`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ type: "echo" }),

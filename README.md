@@ -1,85 +1,30 @@
-# UNSAID
+# UNSAID Web
 
-UNSAID is a responsive anonymous social space for honest expressions, replies,
-open letters, and messages sealed for the future. It uses one KISS full-stack
-Next.js application: the App Router renders the interface and Route Handlers
-provide the backend.
+Responsive Next.js frontend for anonymous expressions, replies, open letters,
+and time capsules. The backend lives in
+[`ParzifaL-03/unsaid-be`](https://github.com/ParzifaL-03/unsaid-be).
 
 ## Stack
 
 - Next.js 16, React 19, and TypeScript
-- Tailwind CSS v4 and reusable design-system components
-- MongoDB Atlas with Mongoose connection pooling
-- Zod 4 request, query, parameter, environment, and response contracts
-- Google OAuth with revocable database-backed sessions
+- Tailwind CSS v4
+- Reusable global UI components
+- Zod 4 response contracts
+- External NestJS API
 
-## Included
-
-- Anonymous feed with cursor pagination and mood/topic filters
-- Posts, public/private replies, and idempotent echo reactions
-- Google-authenticated accounts with rotating public aliases
-- Open letters that never expose recipient email in public responses
-- Private, public, and collective time capsules
-- Report and block foundations for moderation
-- Responsive desktop, tablet, and mobile UI based on the Figma design system
-
-## Architecture
+## Structure
 
 ```text
 src/
-├── app/
-│   └── api/             # Thin Next.js Route Handlers
+├── app/             # Pages and layouts; no API Route Handlers
 ├── components/
 │   ├── layout/
 │   ├── shared/
-│   └── ui/              # Global Button, Alert, Card, Dialog, and form controls
-├── contracts/           # Shared Zod request and response contracts
-├── features/            # Client feature modules and contexts
-├── server/
-│   ├── auth/            # Session lifecycle
-│   ├── db/              # Cached connection and Mongoose models
-│   └── services/        # Business logic
-└── lib/                 # Framework-neutral helpers
-```
-
-The backend flow is deliberately small:
-
-```text
-Route Handler → Zod → Session/authorization → Service → Mongoose
-```
-
-There is no controller class, repository abstraction, dependency injection
-container, runtime index synchronization, or separate NestJS service.
-
-## Database collections
-
-| Collection  | Purpose                                                 |
-| ----------- | ------------------------------------------------------- |
-| `users`     | Private Google identity, public alias, role, and status |
-| `sessions`  | Hashed session tokens with TTL expiration               |
-| `posts`     | Anonymous expressions and denormalized counters         |
-| `replies`   | Public and private post replies                         |
-| `reactions` | Unique user echoes for posts and replies                |
-| `letters`   | Public or recipient-only open letters                   |
-| `capsules`  | Sealed content with unlock time and visibility          |
-| `reports`   | Moderation reports and review status                    |
-| `blocks`    | Unique blocker/blocked-user relationships               |
-
-Email addresses are never returned in public content payloads. Letter recipient
-lookup uses an HMAC hash. Posts, replies, letters, and capsules store an alias
-snapshot so historical content does not change when the user rotates aliases.
-
-## MongoDB connection behavior
-
-Every service safely calls `connectMongo()`. The connection and in-flight
-promise are cached on `globalThis`, so a warm Vercel instance reuses the same
-Mongoose pool. The application never disconnects after a request. Failed initial
-connections clear the cached promise so the next request can retry.
-
-Indexes are not synchronized during application startup. Run them explicitly:
-
-```bash
-npm run db:indexes
+│   └── ui/          # Button, Alert, Card, Dialog, and form controls
+├── contracts/       # Frontend request/response contracts
+├── features/        # Client feature modules and contexts
+├── lib/             # API client and framework-neutral helpers
+└── types/
 ```
 
 ## Environment
@@ -87,31 +32,23 @@ npm run db:indexes
 Copy `.env.example` to `.env.local`:
 
 ```env
-MONGODB_URI=mongodb+srv://...
-AUTH_SECRET=use-at-least-32-random-characters
-GOOGLE_CLIENT_ID=...
-GOOGLE_CLIENT_SECRET=...
-NEXT_PUBLIC_APP_URL=http://localhost:3000
-SESSION_MAX_AGE_DAYS=30
+NEXT_PUBLIC_API_URL=http://localhost:4000/api
 ```
 
-For Google OAuth, add this callback URL in Google Cloud:
+In Vercel, set `NEXT_PUBLIC_API_URL` to the public NestJS API URL, including its
+`/api` prefix. The backend must set `FRONTEND_URL` to the exact Vercel or custom
+domain and enable production cookie settings described in its README.
 
-```text
-http://localhost:3000/api/auth/google/callback
-```
+## Development
 
-Use the equivalent HTTPS URL for production.
-
-## Local development
+Start the backend first, then:
 
 ```bash
 npm install
-npm run db:indexes
 npm run dev
 ```
 
-Quality checks:
+Checks:
 
 ```bash
 npm test
@@ -119,24 +56,3 @@ npm run typecheck
 npm run lint
 npm run build
 ```
-
-## API overview
-
-```text
-GET|POST    /api/posts
-GET         /api/posts/:id
-GET|POST    /api/posts/:id/replies
-POST|DELETE /api/posts/:id/reactions
-GET|POST    /api/open-letters
-GET|POST    /api/capsules
-POST        /api/reports
-POST|DELETE /api/blocks/:userId
-GET         /api/auth/session
-POST        /api/auth/sign-out
-POST        /api/me/alias
-GET         /api/health/database
-```
-
-Invalid JSON returns `400`, unauthenticated requests `401`, missing resources
-`404`, conflicts `409`, Zod validation failures `422`, and unavailable database
-connections `503`.
