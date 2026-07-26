@@ -8,7 +8,7 @@ import { Alert, Button, Card, Chip, Input, Textarea } from "@/components/ui";
 import { AuthDialog } from "@/features/auth/components/auth-dialog";
 import { useAuth } from "@/features/auth/auth-context";
 import { usePosts } from "@/features/feed/post-context";
-import { capsulesApi } from "@/lib/api";
+import { useCreateCapsuleMutation } from "@/lib/api/query";
 import type { Mood } from "@/types/post";
 
 type PublishMode = "now" | "schedule" | "seal";
@@ -17,6 +17,7 @@ export function Composer() {
   const router = useRouter();
   const { account } = useAuth();
   const { addPost } = usePosts();
+  const createCapsuleMutation = useCreateCapsuleMutation();
   const [authOpen, setAuthOpen] = useState(false);
   const [mode, setMode] = useState<PublishMode>("now");
   const [body, setBody] = useState("");
@@ -62,7 +63,7 @@ export function Composer() {
         });
         router.push("/");
       } else {
-        await capsulesApi.create({
+        await createCapsuleMutation.mutateAsync({
           body: body.trim(),
           topic: topic.trim().replace(/^#/, "") || "unsaid",
           mood,

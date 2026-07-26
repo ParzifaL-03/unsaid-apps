@@ -4,15 +4,17 @@ import {
   createContext,
   useCallback,
   useContext,
-  useEffect,
   useMemo,
-  useState,
   type ReactNode,
 } from "react";
 import {
   type AuthAccount,
 } from "@/contracts/auth";
-import { authApi } from "@/lib/api";
+import {
+  useRotateAliasMutation,
+  useSessionQuery,
+  useSignOutMutation,
+} from "@/lib/api/query";
 
 export type AnonymousAccount = AuthAccount;
 
@@ -26,41 +28,27 @@ type AuthContextValue = {
 const AuthContext = createContext<AuthContextValue | null>(null);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [account, setAccount] = useState<AnonymousAccount | null>(null);
-  const [isHydrated, setIsHydrated] = useState(false);
-
-  useEffect(() => {
-    const frame = window.requestAnimationFrame(() => {
-      void (async () => {
-        try {
-          const data = await authApi.session();
-          setAccount(data.account);
-        } finally {
-          setIsHydrated(true);
-        }
-      })();
-    });
-
-    return () => window.cancelAnimationFrame(frame);
-  }, []);
+  const session = useSessionQuery();
+  const rotateAliasMutation = useRotateAliasMutation();
+  const signOutMutation = useSignOutMutation();
+  const account = session.data?.account ?? null;
 
   const rotateAlias = useCallback(async () => {
-    setAccount((await authApi.rotateAlias()).account);
-  }, []);
+    await rotateAliasMutation.mutateAsync();
+  }, [rotateAliasMutation]);
 
   const signOut = useCallback(async () => {
-    await authApi.signOut();
-    setAccount(null);
-  }, []);
+    await signOutMutation.mutateAsync();
+  }, [signOutMutation]);
 
   const value = useMemo<AuthContextValue>(
     () => ({
       account,
-      isHydrated,
+      isHydrated: !session.isPending,
       rotateAlias,
       signOut,
     }),
-    [account, isHydrated, rotateAlias, signOut],
+    [account, rotateAlias, session.isPending, signOut],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

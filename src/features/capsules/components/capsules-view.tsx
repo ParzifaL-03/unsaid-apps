@@ -2,16 +2,17 @@
 
 import Link from "next/link";
 import { Clock3, LockKeyhole, UsersRound } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import type { Capsule } from "@/contracts/content";
 import { PageHeader } from "@/components/shared/page-header";
 import { Alert, Button, buttonVariants, Card, Chip } from "@/components/ui";
 import { AuthDialog } from "@/features/auth/components/auth-dialog";
 import { useAuth } from "@/features/auth/auth-context";
-import { capsulesApi } from "@/lib/api";
+import { useCapsulesQuery } from "@/lib/api/query";
 import { cn } from "@/lib/utils";
 
 const filters = ["All capsules", "Sealed", "Published", "Collective"] as const;
+const EMPTY_CAPSULES: Capsule[] = [];
 
 function capsuleType(capsule: Capsule) {
   if (capsule.visibility === "collective") return "Collective";
@@ -37,30 +38,10 @@ export function CapsulesView() {
     "All capsules",
   );
   const [authOpen, setAuthOpen] = useState(false);
-  const [capsules, setCapsules] = useState<Capsule[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState("");
-
-  useEffect(() => {
-    if (!isHydrated) return;
-    if (!account) return;
-
-    void (async () => {
-      setIsLoading(true);
-      try {
-        const data = await capsulesApi.list();
-        setCapsules(data.capsules);
-      } catch (loadError) {
-        setError(
-          loadError instanceof Error
-            ? loadError.message
-            : "Unable to load capsules.",
-        );
-      } finally {
-        setIsLoading(false);
-      }
-    })();
-  }, [account, isHydrated]);
+  const capsulesQuery = useCapsulesQuery(Boolean(account));
+  const capsules = capsulesQuery.data?.capsules ?? EMPTY_CAPSULES;
+  const error =
+    capsulesQuery.error instanceof Error ? capsulesQuery.error.message : "";
 
   const filteredCapsules = useMemo(
     () =>
@@ -137,7 +118,7 @@ export function CapsulesView() {
         </Card>
 
         <div className="mt-5 grid gap-4 lg:grid-cols-3">
-          {isLoading ? (
+          {capsulesQuery.isPending && account ? (
             <Card className="p-6 text-sm text-muted">Loading capsules...</Card>
           ) : !account ? (
             <Card className="p-6">

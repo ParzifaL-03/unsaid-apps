@@ -1,16 +1,19 @@
 "use client";
 
 import { Flag, LockKeyhole, Send } from "lucide-react";
-import { useCallback, useEffect, useMemo, useState } from "react";
-import { type Reply } from "@/contracts/content";
+import { useCallback, useMemo, useState } from "react";
 import { AnonymousPostCard } from "@/components/shared/anonymous-post-card";
 import { PageHeader } from "@/components/shared/page-header";
 import { Alert, Button, Card, Textarea } from "@/components/ui";
 import { AuthDialog } from "@/features/auth/components/auth-dialog";
 import { useAuth } from "@/features/auth/auth-context";
 import { usePosts } from "@/features/feed/post-context";
-import { moderationApi, postsApi } from "@/lib/api";
-import type { AnonymousPost } from "@/types/post";
+import {
+  useCreateReplyMutation,
+  usePostQuery,
+  useRepliesQuery,
+  useReportMutation,
+} from "@/lib/api/query";
 
 export function PostDetail({ id }: { id: string }) {
   const { account } = useAuth();
@@ -19,67 +22,37 @@ export function PostDetail({ id }: { id: string }) {
     () => posts.find((item) => item.id === id),
     [id, posts],
   );
-  const [post, setPost] = useState<AnonymousPost | undefined>(initialPost);
-  const [replies, setReplies] = useState<Reply[]>([]);
+  const postQuery = usePostQuery(id);
+  const repliesQuery = useRepliesQuery(id);
+  const createReplyMutation = useCreateReplyMutation(id);
+  const reportMutation = useReportMutation();
+  const post = postQuery.data?.post ?? initialPost;
+  const replies = repliesQuery.data?.replies ?? [];
   const [reply, setReply] = useState("");
   const [visibility, setVisibility] = useState<"public" | "private">("public");
   const [error, setError] = useState("");
-  const [isLoading, setIsLoading] = useState(!initialPost);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isReporting, setIsReporting] = useState(false);
   const [reported, setReported] = useState(false);
   const [authOpen, setAuthOpen] = useState(false);
-
-  useEffect(() => {
-    const controller = new AbortController();
-    void (async () => {
-      try {
-        const [postResponse, repliesResponse] = await Promise.all([
-          postsApi.get(id),
-          postsApi.listReplies(id),
-        ]);
-        setPost(postResponse.post);
-        setReplies(repliesResponse.replies);
-      } catch (loadError) {
-        if (!controller.signal.aborted) {
-          setError(
-            loadError instanceof Error
-              ? loadError.message
-              : "Unable to load this conversation.",
-          );
-        }
-      } finally {
-        if (!controller.signal.aborted) setIsLoading(false);
-      }
-    })();
-    return () => controller.abort();
-  }, [id]);
+  const loadError = postQuery.error ?? repliesQuery.error;
+  const isLoading = !initialPost && (postQuery.isPending || repliesQuery.isPending);
 
   const sendReply = useCallback(async () => {
     if (!account || account.provider !== "google") {
       setAuthOpen(true);
       return;
     }
-    setIsSubmitting(true);
     setError("");
     try {
-      const created = (await postsApi.createReply(id, { body: reply, visibility }))
-        .reply;
-      setReplies((current) => [...current, created]);
+      await createReplyMutation.mutateAsync({ body: reply, visibility });
       setReply("");
-      setPost((current) =>
-        current ? { ...current, replies: current.replies + 1 } : current,
-      );
     } catch (submitError) {
       setError(
         submitError instanceof Error
           ? submitError.message
           : "Unable to send reply.",
       );
-    } finally {
-      setIsSubmitting(false);
     }
-  }, [account, id, reply, visibility]);
+  }, [account, createReplyMutation, reply, visibility]);
 
   const reportPost = useCallback(async () => {
     if (!account || account.provider !== "google") {
@@ -87,10 +60,9 @@ export function PostDetail({ id }: { id: string }) {
       return;
     }
 
-    setIsReporting(true);
     setError("");
     try {
-      await moderationApi.report({
+      await reportMutation.mutateAsync({
         targetType: "post",
         targetId: id,
         reason: "other",
@@ -102,10 +74,8 @@ export function PostDetail({ id }: { id: string }) {
           ? reportError.message
           : "Unable to report this expression.",
       );
-    } finally {
-      setIsReporting(false);
     }
-  }, [account, id]);
+  }, [account, id, reportMutation]);
 
   if (isLoading) {
     return (
@@ -120,7 +90,11 @@ export function PostDetail({ id }: { id: string }) {
       <div className="mx-auto max-w-3xl px-5 py-10">
         <Alert
           title="Conversation unavailable"
-          description={error || "This expression may have been removed."}
+          description={
+            error ||
+            (loadError instanceof Error ? loadError.message : "") ||
+            "This expression may have been removed."
+          }
           variant="danger"
         />
       </div>
@@ -143,11 +117,6 @@ export function PostDetail({ id }: { id: string }) {
               onEcho={async (postId) => {
                 try {
                   await echoPost(postId);
-                  setPost((current) =>
-                    current
-                      ? { ...current, echoes: current.echoes + 1 }
-                      : current,
-                  );
                 } catch (echoError) {
                   setError(
                     echoError instanceof Error
@@ -211,11 +180,11 @@ export function PostDetail({ id }: { id: string }) {
             <Button
               variant="secondary"
               fullWidth
-              disabled={reply.trim().length < 2 || isSubmitting}
+              disabled={reply.trim().length < 2 || createReplyMutation.isPending}
               onClick={() => void sendReply()}
             >
               <Send className="size-4" />
-              {isSubmitting ? "Sending…" : "Send public reply"}
+              {createReplyMutation.isPending ? "Sending…" : "Send public reply"}
             </Button>
             <Button
               variant="ghost"
@@ -242,11 +211,11 @@ export function PostDetail({ id }: { id: string }) {
               variant="ghost"
               fullWidth
               className="text-red-700"
-              disabled={isReporting || reported}
+              disabled={reportMutation.isPending || reported}
               onClick={() => void reportPost()}
             >
               <Flag className="size-4" />
-              {isReporting
+              {reportMutation.isPending
                 ? "Reporting..."
                 : reported
                   ? "Expression reported"
