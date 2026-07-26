@@ -3,13 +3,12 @@
 import { useRouter } from "next/navigation";
 import { CalendarClock, LockKeyhole, Send, ShieldCheck } from "lucide-react";
 import { useMemo, useState, type FormEvent } from "react";
-import { capsuleResponseSchema } from "@/contracts/content";
 import { PageHeader } from "@/components/shared/page-header";
 import { Alert, Button, Card, Chip, Input, Textarea } from "@/components/ui";
 import { AuthDialog } from "@/features/auth/components/auth-dialog";
 import { useAuth } from "@/features/auth/auth-context";
 import { usePosts } from "@/features/feed/post-context";
-import { apiFetch, getApiError } from "@/lib/api-client";
+import { capsulesApi } from "@/lib/api";
 import type { Mood } from "@/types/post";
 
 type PublishMode = "now" | "schedule" | "seal";
@@ -63,23 +62,13 @@ export function Composer() {
         });
         router.push("/");
       } else {
-        const response = await apiFetch("/capsules", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            body: body.trim(),
-            topic: topic.trim().replace(/^#/, "") || "unsaid",
-            mood,
-            unlockAt: new Date(releaseAt).toISOString(),
-            visibility: mode === "seal" ? "private" : "public",
-          }),
+        await capsulesApi.create({
+          body: body.trim(),
+          topic: topic.trim().replace(/^#/, "") || "unsaid",
+          mood,
+          unlockAt: new Date(releaseAt),
+          visibility: mode === "seal" ? "private" : "public",
         });
-        if (!response.ok) {
-          throw new Error(
-            await getApiError(response, "Unable to save this capsule."),
-          );
-        }
-        capsuleResponseSchema.parse(await response.json());
         router.push("/capsules");
       }
     } catch (submitError) {

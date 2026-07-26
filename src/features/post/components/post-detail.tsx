@@ -2,19 +2,14 @@
 
 import { Flag, LockKeyhole, Send } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import {
-  postResponseSchema,
-  repliesResponseSchema,
-  replyResponseSchema,
-  type Reply,
-} from "@/contracts/content";
+import { type Reply } from "@/contracts/content";
 import { AnonymousPostCard } from "@/components/shared/anonymous-post-card";
 import { PageHeader } from "@/components/shared/page-header";
 import { Alert, Button, Card, Textarea } from "@/components/ui";
 import { AuthDialog } from "@/features/auth/components/auth-dialog";
 import { useAuth } from "@/features/auth/auth-context";
 import { usePosts } from "@/features/feed/post-context";
-import { apiFetch, getApiError } from "@/lib/api-client";
+import { moderationApi, postsApi } from "@/lib/api";
 import type { AnonymousPost } from "@/types/post";
 
 export function PostDetail({ id }: { id: string }) {
@@ -31,6 +26,8 @@ export function PostDetail({ id }: { id: string }) {
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(!initialPost);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isReporting, setIsReporting] = useState(false);
+  const [reported, setReported] = useState(false);
   const [authOpen, setAuthOpen] = useState(false);
 
   useEffect(() => {
@@ -38,27 +35,11 @@ export function PostDetail({ id }: { id: string }) {
     void (async () => {
       try {
         const [postResponse, repliesResponse] = await Promise.all([
-          apiFetch(`/posts/${id}`, {
-            cache: "no-store",
-            signal: controller.signal,
-          }),
-          apiFetch(`/posts/${id}/replies`, {
-            cache: "no-store",
-            signal: controller.signal,
-          }),
+          postsApi.get(id),
+          postsApi.listReplies(id),
         ]);
-        if (!postResponse.ok) {
-          throw new Error(await getApiError(postResponse, "Post not found."));
-        }
-        if (!repliesResponse.ok) {
-          throw new Error(
-            await getApiError(repliesResponse, "Unable to load replies."),
-          );
-        }
-        setPost(postResponseSchema.parse(await postResponse.json()).post);
-        setReplies(
-          repliesResponseSchema.parse(await repliesResponse.json()).replies,
-        );
+        setPost(postResponse.post);
+        setReplies(repliesResponse.replies);
       } catch (loadError) {
         if (!controller.signal.aborted) {
           setError(
@@ -82,15 +63,8 @@ export function PostDetail({ id }: { id: string }) {
     setIsSubmitting(true);
     setError("");
     try {
-      const response = await apiFetch(`/posts/${id}/replies`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ body: reply, visibility }),
-      });
-      if (!response.ok) {
-        throw new Error(await getApiError(response, "Unable to send reply."));
-      }
-      const created = replyResponseSchema.parse(await response.json()).reply;
+      const created = (await postsApi.createReply(id, { body: reply, visibility }))
+        .reply;
       setReplies((current) => [...current, created]);
       setReply("");
       setPost((current) =>
@@ -106,6 +80,32 @@ export function PostDetail({ id }: { id: string }) {
       setIsSubmitting(false);
     }
   }, [account, id, reply, visibility]);
+
+  const reportPost = useCallback(async () => {
+    if (!account || account.provider !== "google") {
+      setAuthOpen(true);
+      return;
+    }
+
+    setIsReporting(true);
+    setError("");
+    try {
+      await moderationApi.report({
+        targetType: "post",
+        targetId: id,
+        reason: "other",
+      });
+      setReported(true);
+    } catch (reportError) {
+      setError(
+        reportError instanceof Error
+          ? reportError.message
+          : "Unable to report this expression.",
+      );
+    } finally {
+      setIsReporting(false);
+    }
+  }, [account, id]);
 
   if (isLoading) {
     return (
@@ -231,9 +231,26 @@ export function PostDetail({ id }: { id: string }) {
                 ? "Private reply selected"
                 : "Switch to private reply"}
             </Button>
-            <Button variant="ghost" fullWidth className="text-red-700">
+            {reported ? (
+              <Alert
+                title="Report sent"
+                description="Thanks. The moderation queue can now review this expression."
+                variant="success"
+              />
+            ) : null}
+            <Button
+              variant="ghost"
+              fullWidth
+              className="text-red-700"
+              disabled={isReporting || reported}
+              onClick={() => void reportPost()}
+            >
               <Flag className="size-4" />
-              Report expression
+              {isReporting
+                ? "Reporting..."
+                : reported
+                  ? "Expression reported"
+                  : "Report expression"}
             </Button>
           </aside>
         </div>

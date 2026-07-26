@@ -10,11 +10,9 @@ import {
   type ReactNode,
 } from "react";
 import {
-  aliasResponseSchema,
-  sessionResponseSchema,
   type AuthAccount,
 } from "@/contracts/auth";
-import { apiFetch, getApiError } from "@/lib/api-client";
+import { authApi } from "@/lib/api";
 
 export type AnonymousAccount = AuthAccount;
 
@@ -35,13 +33,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const frame = window.requestAnimationFrame(() => {
       void (async () => {
         try {
-          const response = await apiFetch("/auth/session", {
-            cache: "no-store",
-          });
-          if (response.ok) {
-            const data = sessionResponseSchema.parse(await response.json());
-            setAccount(data.account);
-          }
+          const data = await authApi.session();
+          setAccount(data.account);
         } finally {
           setIsHydrated(true);
         }
@@ -52,15 +45,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const rotateAlias = useCallback(async () => {
-    const response = await apiFetch("/me/alias", { method: "POST" });
-    if (!response.ok) {
-      throw new Error(await getApiError(response, "Unable to rotate alias."));
-    }
-    setAccount(aliasResponseSchema.parse(await response.json()).account);
+    setAccount((await authApi.rotateAlias()).account);
   }, []);
 
   const signOut = useCallback(async () => {
-    await apiFetch("/auth/sign-out", { method: "POST" });
+    await authApi.signOut();
     setAccount(null);
   }, []);
 

@@ -10,14 +10,12 @@ import {
   type ReactNode,
 } from "react";
 import {
-  postResponseSchema,
-  postsResponseSchema,
-  reactionResponseSchema,
-} from "@/contracts/content";
-import { apiFetch, getApiError } from "@/lib/api-client";
+  postsApi,
+  type CreatePostInput,
+} from "@/lib/api";
 import type { AnonymousPost, Mood } from "@/types/post";
 
-type NewPost = {
+type NewPost = CreatePostInput & {
   body: string;
   topic: string;
   mood: Mood;
@@ -40,11 +38,8 @@ export function PostProvider({ children }: { children: ReactNode }) {
     const frame = window.requestAnimationFrame(() => {
       void (async () => {
         try {
-          const response = await apiFetch("/posts", { cache: "no-store" });
-          if (response.ok) {
-            const data = postsResponseSchema.parse(await response.json());
-            setCustomPosts(data.posts);
-          }
+          const data = await postsApi.list();
+          setCustomPosts(data.posts);
         } finally {
           setIsLoading(false);
         }
@@ -55,33 +50,13 @@ export function PostProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const addPost = useCallback(async (post: NewPost) => {
-    const response = await apiFetch("/posts", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(post),
-    });
-
-    if (!response.ok) {
-      throw new Error(
-        await getApiError(response, "Unable to publish anonymous post."),
-      );
-    }
-
-    const data = postResponseSchema.parse(await response.json());
+    const data = await postsApi.create(post);
     setCustomPosts((current) => [data.post, ...current]);
     return data.post;
   }, []);
 
   const echoPost = useCallback(async (id: string) => {
-    const response = await apiFetch(`/posts/${id}/reactions`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ type: "echo" }),
-    });
-    if (!response.ok) {
-      throw new Error(await getApiError(response, "Unable to echo this post."));
-    }
-    const result = reactionResponseSchema.parse(await response.json());
+    const result = await postsApi.addReaction(id);
     setCustomPosts((current) =>
       current.map((post) =>
         post.id === id ? { ...post, echoes: result.count } : post,
