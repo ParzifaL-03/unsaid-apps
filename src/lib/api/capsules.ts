@@ -15,4 +15,8 @@ export const capsulesApi = {
     }),
   create: (data: CreateCapsuleInput) =>
     apiRequest("/capsules", capsuleResponseSchema, { method: "POST", data }),
+  publish: (id: string) =>
+    apiRequest(`/capsules/${id}/publish`, capsuleResponseSchema, {
+      method: "POST",
+    }),
 };

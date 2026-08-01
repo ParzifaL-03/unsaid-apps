@@ -1,14 +1,17 @@
 "use client";
 
 import Link from "next/link";
-import { Clock3, LockKeyhole, UsersRound } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { Clock3, ExternalLink, LockKeyhole, Send, UsersRound } from "lucide-react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import type { Capsule } from "@/contracts/content";
 import { PageHeader } from "@/components/shared/page-header";
 import { Alert, Button, buttonVariants, Card, Chip } from "@/components/ui";
 import { AuthDialog } from "@/features/auth/components/auth-dialog";
 import { useAuth } from "@/features/auth/auth-context";
-import { useCapsulesQuery } from "@/lib/api/query";
+import {
+  useCapsulesQuery,
+  usePublishCapsuleMutation,
+} from "@/lib/api/query";
 import { cn } from "@/lib/utils";
 
 const filters = ["All capsules", "Sealed", "Published", "Collective"] as const;
@@ -38,7 +41,9 @@ export function CapsulesView() {
     "All capsules",
   );
   const [authOpen, setAuthOpen] = useState(false);
+  const [publishError, setPublishError] = useState("");
   const capsulesQuery = useCapsulesQuery(Boolean(account));
+  const publishCapsuleMutation = usePublishCapsuleMutation();
   const capsules = capsulesQuery.data?.capsules ?? EMPTY_CAPSULES;
   const hasError = Boolean(capsulesQuery.error);
 
@@ -55,6 +60,19 @@ export function CapsulesView() {
           active === "All capsules" || capsuleType(capsule) === active,
       ),
     [active, capsules],
+  );
+
+  const publishCapsule = useCallback(
+    async (capsule: Capsule) => {
+      setPublishError("");
+      try {
+        await publishCapsuleMutation.mutateAsync(capsule.id);
+      } catch (error) {
+        console.error("Failed to publish capsule", error);
+        setPublishError("We couldn't publish this capsule yet.");
+      }
+    },
+    [publishCapsuleMutation],
   );
 
   return (
@@ -112,6 +130,15 @@ export function CapsulesView() {
           />
         ) : null}
 
+        {publishError ? (
+          <Alert
+            className="mt-6"
+            title="Unable to publish capsule"
+            description={publishError}
+            variant="danger"
+          />
+        ) : null}
+
         <Card className="mt-6 border-0 bg-lavender p-7 text-white sm:p-9">
           <p className="text-xs font-semibold uppercase tracking-[0.08em]">
             Collective capsule
@@ -139,6 +166,9 @@ export function CapsulesView() {
               const Icon = capsuleIcon(capsule);
               const type = capsuleType(capsule);
               const unlockDate = new Date(capsule.unlockAt).toLocaleDateString();
+              const canPublish =
+                capsule.status === "unlocked" &&
+                capsule.visibility !== "private";
               return (
                 <Card
                   key={capsule.id}
@@ -161,6 +191,36 @@ export function CapsulesView() {
                   <p className="mt-4 text-sm leading-6 opacity-85">
                     {capsule.body}
                   </p>
+                  <div className="mt-6 flex flex-wrap gap-2">
+                    {capsule.publishedPostId ? (
+                      <Link
+                        href={`/post/${capsule.publishedPostId}`}
+                        className={cn(
+                          buttonVariants({
+                            variant: "ghost",
+                            size: "sm",
+                          }),
+                          "bg-white/20 hover:bg-white/35",
+                        )}
+                      >
+                        <ExternalLink className="size-4" aria-hidden="true" />
+                        View post
+                      </Link>
+                    ) : canPublish ? (
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="bg-white/20 hover:bg-white/35"
+                        disabled={publishCapsuleMutation.isPending}
+                        onClick={() => void publishCapsule(capsule)}
+                      >
+                        <Send className="size-4" aria-hidden="true" />
+                        {publishCapsuleMutation.isPending
+                          ? "Publishing..."
+                          : "Publish"}
+                      </Button>
+                    ) : null}
+                  </div>
                 </Card>
               );
             })

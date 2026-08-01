@@ -115,6 +115,7 @@ export const capsuleSchema = z.object({
   visibility: z.enum(["private", "public", "collective"]),
   unlockAt: z.string(),
   status: z.enum(["sealed", "unlocked", "published"]),
+  publishedPostId: objectIdSchema.optional(),
 });
 
 export const createCapsuleInputSchema = z.object({

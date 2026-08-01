@@ -13,9 +13,11 @@ import {
   postsResponseSchema,
   repliesResponseSchema,
 } from "@/contracts/content";
+import { healthResponseSchema } from "@/lib/api/health";
 import {
   authApi,
   capsulesApi,
+  healthApi,
   moderationApi,
   openLettersApi,
   postsApi,
@@ -32,9 +34,11 @@ type PostResponse = z.infer<typeof postResponseSchema>;
 type RepliesResponse = z.infer<typeof repliesResponseSchema>;
 type OpenLettersResponse = z.infer<typeof openLettersResponseSchema>;
 type CapsulesResponse = z.infer<typeof capsulesResponseSchema>;
+type HealthResponse = z.infer<typeof healthResponseSchema>;
 
 export const queryKeys = {
   session: ["auth", "session"] as const,
+  healthDatabase: ["health", "database"] as const,
   posts: ["posts"] as const,
   post: (id: string) => ["posts", id] as const,
   replies: (postId: string) => ["posts", postId, "replies"] as const,
@@ -64,6 +68,14 @@ export function useSessionQuery() {
       error instanceof ApiClientError && error.statusCode === 401
         ? false
         : failureCount < 1,
+  });
+}
+
+export function useHealthDatabaseQuery() {
+  return useQuery<HealthResponse>({
+    queryKey: queryKeys.healthDatabase,
+    queryFn: healthApi.database,
+    retry: 1,
   });
 }
 
@@ -126,6 +138,35 @@ export function useEchoPostMutation() {
 
   return useMutation({
     mutationFn: (id: string) => postsApi.addReaction(id),
+    onSuccess: (data, id) => {
+      queryClient.setQueryData<PostsResponse>(queryKeys.posts, (current) => {
+        if (!current) {
+          return current;
+        }
+
+        return {
+          ...current,
+          posts: current.posts.map((post) =>
+            post.id === id ? { ...post, echoes: data.count } : post,
+          ),
+        };
+      });
+      queryClient.setQueryData<PostResponse>(queryKeys.post(id), (current) => {
+        if (!current) {
+          return current;
+        }
+
+        return { post: { ...current.post, echoes: data.count } };
+      });
+    },
+  });
+}
+
+export function useRemoveEchoPostMutation() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (id: string) => postsApi.removeReaction(id),
     onSuccess: (data, id) => {
       queryClient.setQueryData<PostsResponse>(queryKeys.posts, (current) => {
         if (!current) {
@@ -268,8 +309,51 @@ export function useCreateCapsuleMutation() {
   });
 }
 
+export function usePublishCapsuleMutation() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (id: string) => capsulesApi.publish(id),
+    onSuccess: (data) => {
+      queryClient.setQueryData<CapsulesResponse>(
+        queryKeys.capsules,
+        (current) => {
+          if (!current) {
+            return { capsules: [data.capsule] };
+          }
+
+          return {
+            capsules: current.capsules.map((capsule) =>
+              capsule.id === data.capsule.id ? data.capsule : capsule,
+            ),
+          };
+        },
+      );
+
+      if (data.capsule.publishedPostId) {
+        queryClient.invalidateQueries({ queryKey: queryKeys.posts });
+        queryClient.invalidateQueries({
+          queryKey: queryKeys.post(data.capsule.publishedPostId),
+        });
+      }
+    },
+  });
+}
+
 export function useReportMutation() {
   return useMutation({
     mutationFn: moderationApi.report,
+  });
+}
+
+export function useBlockUserMutation() {
+  return useMutation({
+    mutationFn: moderationApi.block,
+  });
+}
+
+export function useUnblockUserMutation() {
+  return useMutation({
+    mutationFn: moderationApi.unblock,
   });
 }

@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import {
+  capsuleSchema,
   createCapsuleInputSchema,
   createOpenLetterInputSchema,
   createPostInputSchema,
@@ -39,4 +40,19 @@ test("capsule unlock date must be in the future", () => {
     unlockAt: new Date(0).toISOString(),
   });
   assert.equal(result.success, false);
+});
+
+test("capsule response accepts published post linkage", () => {
+  const result = capsuleSchema.parse({
+    id: "507f1f77bcf86cd799439011",
+    alias: "quiet comet",
+    body: "A message that became a public expression.",
+    topic: "future-me",
+    visibility: "public",
+    unlockAt: new Date().toISOString(),
+    status: "published",
+    publishedPostId: "507f1f77bcf86cd799439012",
+  });
+
+  assert.equal(result.publishedPostId, "507f1f77bcf86cd799439012");
 });
