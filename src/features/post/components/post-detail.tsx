@@ -1,7 +1,7 @@
 "use client";
 
 import { Flag, LockKeyhole, Send } from "lucide-react";
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { AnonymousPostCard } from "@/components/shared/anonymous-post-card";
 import { PageHeader } from "@/components/shared/page-header";
 import { Alert, Button, Card, Textarea } from "@/components/ui";
@@ -36,6 +36,12 @@ export function PostDetail({ id }: { id: string }) {
   const loadError = postQuery.error ?? repliesQuery.error;
   const isLoading = !initialPost && (postQuery.isPending || repliesQuery.isPending);
 
+  useEffect(() => {
+    if (loadError) {
+      console.error("Failed to load conversation", loadError);
+    }
+  }, [loadError]);
+
   const sendReply = useCallback(async () => {
     if (!account || account.provider !== "google") {
       setAuthOpen(true);
@@ -46,11 +52,8 @@ export function PostDetail({ id }: { id: string }) {
       await createReplyMutation.mutateAsync({ body: reply, visibility });
       setReply("");
     } catch (submitError) {
-      setError(
-        submitError instanceof Error
-          ? submitError.message
-          : "Unable to send reply.",
-      );
+      console.error("Failed to send reply", submitError);
+      setError("We couldn't send this reply yet. Please try again.");
     }
   }, [account, createReplyMutation, reply, visibility]);
 
@@ -69,11 +72,8 @@ export function PostDetail({ id }: { id: string }) {
       });
       setReported(true);
     } catch (reportError) {
-      setError(
-        reportError instanceof Error
-          ? reportError.message
-          : "Unable to report this expression.",
-      );
+      console.error("Failed to report expression", reportError);
+      setError("We couldn't send this report yet. Please try again.");
     }
   }, [account, id, reportMutation]);
 
@@ -92,7 +92,6 @@ export function PostDetail({ id }: { id: string }) {
           title="Conversation unavailable"
           description={
             error ||
-            (loadError instanceof Error ? loadError.message : "") ||
             "This expression may have been removed."
           }
           variant="danger"
@@ -118,11 +117,8 @@ export function PostDetail({ id }: { id: string }) {
                 try {
                   await echoPost(postId);
                 } catch (echoError) {
-                  setError(
-                    echoError instanceof Error
-                      ? echoError.message
-                      : "Unable to echo this post.",
-                  );
+                  console.error("Failed to echo post", echoError);
+                  setError("We couldn't echo this post yet. Please try again.");
                 }
               }}
             />

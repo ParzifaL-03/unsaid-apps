@@ -73,11 +73,8 @@ export function Composer() {
         router.push("/capsules");
       }
     } catch (submitError) {
-      setError(
-        submitError instanceof Error
-          ? submitError.message
-          : "Unable to publish anonymous post.",
-      );
+      console.error("Failed to submit expression", submitError);
+      setError("We couldn't publish this yet. Please try again.");
     } finally {
       setIsSubmitting(false);
     }

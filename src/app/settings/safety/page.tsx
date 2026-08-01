@@ -1,9 +1,6 @@
-import type { Metadata } from "next";
-import { SafetyView } from "@/features/safety/components/safety-view";
+"use client";
 
-export const metadata: Metadata = {
-  title: "Safety & profile",
-};
+import { SafetyView } from "@/features/safety/components/safety-view";
 
 export default function SafetyPage() {
   return <SafetyView />;

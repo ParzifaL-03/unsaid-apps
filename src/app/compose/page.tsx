@@ -1,9 +1,6 @@
-import type { Metadata } from "next";
-import { Composer } from "@/features/compose/components/composer";
+"use client";
 
-export const metadata: Metadata = {
-  title: "New expression",
-};
+import { Composer } from "@/features/compose/components/composer";
 
 export default function ComposePage() {
   return <Composer />;

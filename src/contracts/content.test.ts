@@ -6,7 +6,7 @@ import {
   createPostInputSchema,
 } from "@/contracts/content";
 
-test("create post normalizes topic and rejects unknown fields", () => {
+test("create post normalizes topic and strips unknown fields", () => {
   const valid = createPostInputSchema.parse({
     body: "This is a valid anonymous expression.",
     topic: "#Starting-Over",
@@ -14,11 +14,11 @@ test("create post normalizes topic and rejects unknown fields", () => {
   });
   assert.equal(valid.topic, "starting-over");
 
-  const invalid = createPostInputSchema.safeParse({
+  const parsed = createPostInputSchema.parse({
     ...valid,
     authorId: "507f1f77bcf86cd799439011",
   });
-  assert.equal(invalid.success, false);
+  assert.deepEqual(parsed, valid);
 });
 
 test("open letter validates recipient email", () => {

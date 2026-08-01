@@ -1,4 +1,4 @@
-import { apiErrorSchema } from "@/contracts/common";
+import { apiErrorSchema, apiResponseSchema } from "@/contracts/common";
 import axios, {
   AxiosError,
   AxiosHeaders,
@@ -87,11 +87,35 @@ export async function apiRequest<T>(
   if (response.status < 200 || response.status >= 300) {
     const parsedError = apiErrorSchema.safeParse(response.data);
     throw new ApiClientError(
-      parsedError.success ? parsedError.data.error.message : "Request failed.",
+      parsedError.success
+        ? parsedError.data.data.error.message
+        : "Request failed.",
       response.status,
       response.data,
     );
   }
 
-  return schema.parse(response.data);
+  const parsedEnvelope = apiResponseSchema(schema).safeParse(response.data);
+  if (!parsedEnvelope.success) {
+    console.error("Invalid API response envelope", {
+      path,
+      response: response.data,
+      error: parsedEnvelope.error,
+    });
+    throw new ApiClientError(
+      "The server returned an unexpected response.",
+      response.status,
+      response.data,
+    );
+  }
+
+  if (!parsedEnvelope.data.status) {
+    throw new ApiClientError(
+      "Request failed.",
+      parsedEnvelope.data.statusCode,
+      parsedEnvelope.data,
+    );
+  }
+
+  return parsedEnvelope.data.data;
 }

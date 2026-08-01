@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { Clock3, LockKeyhole, UsersRound } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { Capsule } from "@/contracts/content";
 import { PageHeader } from "@/components/shared/page-header";
 import { Alert, Button, buttonVariants, Card, Chip } from "@/components/ui";
@@ -40,8 +40,13 @@ export function CapsulesView() {
   const [authOpen, setAuthOpen] = useState(false);
   const capsulesQuery = useCapsulesQuery(Boolean(account));
   const capsules = capsulesQuery.data?.capsules ?? EMPTY_CAPSULES;
-  const error =
-    capsulesQuery.error instanceof Error ? capsulesQuery.error.message : "";
+  const hasError = Boolean(capsulesQuery.error);
+
+  useEffect(() => {
+    if (capsulesQuery.error) {
+      console.error("Failed to load capsules", capsulesQuery.error);
+    }
+  }, [capsulesQuery.error]);
 
   const filteredCapsules = useMemo(
     () =>
@@ -98,11 +103,11 @@ export function CapsulesView() {
           />
         ) : null}
 
-        {error ? (
+        {hasError ? (
           <Alert
             className="mt-6"
             title="Unable to load capsules"
-            description={error}
+            description="Please refresh the page or try again in a moment."
             variant="danger"
           />
         ) : null}

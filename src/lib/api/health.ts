@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { apiRequest } from "@/lib/api-client";
 
-const healthResponseSchema = z.strictObject({
+const healthResponseSchema = z.object({
   status: z.literal("ok"),
   database: z.literal("connected"),
   latencyMs: z.number().int().min(0),

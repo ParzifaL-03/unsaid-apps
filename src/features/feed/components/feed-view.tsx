@@ -5,13 +5,13 @@ import { useMemo, useState } from "react";
 import { ContextRail } from "@/components/layout/context-rail";
 import { AnonymousPostCard } from "@/components/shared/anonymous-post-card";
 import { PageHeader } from "@/components/shared/page-header";
-import { Alert, Chip, Input } from "@/components/ui";
+import { Chip, Input } from "@/components/ui";
 import { usePosts } from "@/features/feed/post-context";
 import { cn } from "@/lib/utils";
 
 const filters = ["For you", "Latest", "Heavy", "Future replies"] as const;
 
-export function FeedView({ authError }: { authError?: string }) {
+export function FeedView() {
   const { posts, echoPost } = usePosts();
   const [query, setQuery] = useState("");
   const [activeFilter, setActiveFilter] =
@@ -37,19 +37,6 @@ export function FeedView({ authError }: { authError?: string }) {
           title="What stays unsaid today?"
           description="A feed of thoughts, moods, and open letters — without names attached."
         />
-
-        {authError ? (
-          <Alert
-            className="mt-6"
-            title="Google login could not start"
-            description={
-              authError === "missing-google-config"
-                ? "Complete GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, and AUTH_SECRET in the unsaid-be environment, then restart the API."
-                : "Check the development terminal for the OAuth error and try again."
-            }
-            variant="danger"
-          />
-        ) : null}
 
         <div className="relative mt-6">
           <Search

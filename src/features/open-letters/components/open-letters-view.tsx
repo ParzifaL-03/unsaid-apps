@@ -64,11 +64,8 @@ export function OpenLettersView() {
       setError("");
       setSent(true);
     } catch (sendError) {
-      setError(
-        sendError instanceof Error
-          ? sendError.message
-          : "Unable to send open letter.",
-      );
+      console.error("Failed to send open letter", sendError);
+      setError("We couldn't send this letter yet. Please try again.");
     } finally {
       setIsSubmitting(false);
     }

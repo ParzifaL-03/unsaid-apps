@@ -1,9 +1,6 @@
-import type { Metadata } from "next";
-import { OpenLettersView } from "@/features/open-letters/components/open-letters-view";
+"use client";
 
-export const metadata: Metadata = {
-  title: "Open Letters",
-};
+import { OpenLettersView } from "@/features/open-letters/components/open-letters-view";
 
 export default function OpenLettersPage() {
   return <OpenLettersView />;

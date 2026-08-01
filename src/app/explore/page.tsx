@@ -1,9 +1,6 @@
-import type { Metadata } from "next";
-import { ExploreView } from "@/features/explore/components/explore-view";
+"use client";
 
-export const metadata: Metadata = {
-  title: "Explore",
-};
+import { ExploreView } from "@/features/explore/components/explore-view";
 
 export default function ExplorePage() {
   return <ExploreView />;

@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { objectIdSchema } from "@/contracts/common";
 
-export const createReportInputSchema = z.strictObject({
+export const createReportInputSchema = z.object({
   targetType: z.enum(["user", "post", "reply", "letter"]),
   targetId: objectIdSchema,
   reason: z.enum([
@@ -15,11 +15,11 @@ export const createReportInputSchema = z.strictObject({
   note: z.string().trim().max(800).optional(),
 });
 
-export const reportResponseSchema = z.strictObject({
+export const reportResponseSchema = z.object({
   id: objectIdSchema,
   status: z.literal("open"),
 });
 
-export const blockResponseSchema = z.strictObject({
+export const blockResponseSchema = z.object({
   blocked: z.boolean(),
 });
