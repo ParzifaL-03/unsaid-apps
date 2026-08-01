@@ -1,4 +1,5 @@
 import { apiErrorSchema, apiResponseSchema } from "@/contracts/common";
+import { sessionResponseSchema } from "@/contracts/auth";
 import axios, {
   AxiosError,
   AxiosHeaders,
@@ -74,10 +75,46 @@ export class ApiClientError extends Error {
   }
 }
 
+let refreshRequest: Promise<void> | null = null;
+
+async function refreshAccessToken() {
+  refreshRequest ??= apiClient
+    .request<unknown>({
+      url: "/auth/refresh",
+      method: "POST",
+    })
+    .then((response) => {
+      if (response.status < 200 || response.status >= 300) {
+        throw new ApiClientError(
+          "Refresh token is not available.",
+          response.status,
+          response.data,
+        );
+      }
+
+      const parsedEnvelope = apiResponseSchema(sessionResponseSchema).safeParse(
+        response.data,
+      );
+      if (!parsedEnvelope.success || !parsedEnvelope.data.status) {
+        throw new ApiClientError(
+          "Refresh token returned an unexpected response.",
+          response.status,
+          response.data,
+        );
+      }
+    })
+    .finally(() => {
+      refreshRequest = null;
+    });
+
+  return refreshRequest;
+}
+
 export async function apiRequest<T>(
   path: string,
   schema: ZodType<T>,
   config?: AxiosRequestConfig,
+  options: { skipAuthRefresh?: boolean } = {},
 ) {
   const response = await apiClient.request<unknown>({
     url: path,
@@ -85,6 +122,19 @@ export async function apiRequest<T>(
   });
 
   if (response.status < 200 || response.status >= 300) {
+    if (
+      response.status === 401 &&
+      !options.skipAuthRefresh &&
+      path !== "/auth/refresh"
+    ) {
+      try {
+        await refreshAccessToken();
+        return apiRequest(path, schema, config, { skipAuthRefresh: true });
+      } catch {
+        // Keep the original 401 as the caller-facing auth failure.
+      }
+    }
+
     const parsedError = apiErrorSchema.safeParse(response.data);
     throw new ApiClientError(
       parsedError.success
