@@ -2,11 +2,10 @@ import {
   useMutation,
   useQuery,
   useQueryClient,
+  type QueryClient,
 } from "@tanstack/react-query";
 import type { z } from "zod";
-import {
-  sessionResponseSchema,
-} from "@/contracts/auth";
+import { sessionResponseSchema } from "@/contracts/auth";
 import {
   capsulesResponseSchema,
   openLettersResponseSchema,
@@ -25,6 +24,7 @@ import {
   type CreatePostInput,
   type CreateReplyInput,
 } from "@/lib/api";
+import { ApiClientError } from "@/lib/api-client";
 
 type SessionResponse = z.infer<typeof sessionResponseSchema>;
 type PostsResponse = z.infer<typeof postsResponseSchema>;
@@ -42,10 +42,28 @@ export const queryKeys = {
   capsules: ["capsules"] as const,
 };
 
+export function clearAuthenticatedCache(queryClient: QueryClient) {
+  queryClient.removeQueries({ queryKey: queryKeys.capsules });
+}
+
 export function useSessionQuery() {
   return useQuery({
     queryKey: queryKeys.session,
-    queryFn: authApi.session,
+    queryFn: async () => {
+      try {
+        return await authApi.session();
+      } catch (error) {
+        if (error instanceof ApiClientError && error.statusCode === 401) {
+          return { account: null };
+        }
+
+        throw error;
+      }
+    },
+    retry: (failureCount, error) =>
+      error instanceof ApiClientError && error.statusCode === 401
+        ? false
+        : failureCount < 1,
   });
 }
 
@@ -71,7 +89,7 @@ export function useSignOutMutation() {
       queryClient.setQueryData<SessionResponse>(queryKeys.session, {
         account: null,
       });
-      queryClient.removeQueries({ queryKey: queryKeys.capsules });
+      clearAuthenticatedCache(queryClient);
     },
   });
 }
@@ -150,7 +168,8 @@ export function useCreateReplyMutation(postId: string) {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (reply: CreateReplyInput) => postsApi.createReply(postId, reply),
+    mutationFn: (reply: CreateReplyInput) =>
+      postsApi.createReply(postId, reply),
     onSuccess: (data) => {
       queryClient.setQueryData<RepliesResponse>(
         queryKeys.replies(postId),
@@ -162,18 +181,21 @@ export function useCreateReplyMutation(postId: string) {
           return { replies: [...current.replies, data.reply] };
         },
       );
-      queryClient.setQueryData<PostResponse>(queryKeys.post(postId), (current) => {
-        if (!current) {
-          return current;
-        }
+      queryClient.setQueryData<PostResponse>(
+        queryKeys.post(postId),
+        (current) => {
+          if (!current) {
+            return current;
+          }
 
-        return {
-          post: {
-            ...current.post,
-            replies: current.post.replies + 1,
-          },
-        };
-      });
+          return {
+            post: {
+              ...current.post,
+              replies: current.post.replies + 1,
+            },
+          };
+        },
+      );
       queryClient.setQueryData<PostsResponse>(queryKeys.posts, (current) => {
         if (!current) {
           return current;
@@ -201,7 +223,8 @@ export function useCreateOpenLetterMutation() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (letter: CreateOpenLetterInput) => openLettersApi.create(letter),
+    mutationFn: (letter: CreateOpenLetterInput) =>
+      openLettersApi.create(letter),
     onSuccess: (data) => {
       queryClient.setQueryData<OpenLettersResponse>(
         queryKeys.openLetters,

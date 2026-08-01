@@ -4,13 +4,14 @@ import {
   createContext,
   useCallback,
   useContext,
+  useEffect,
   useMemo,
   type ReactNode,
 } from "react";
+import { useQueryClient } from "@tanstack/react-query";
+import { type AuthAccount } from "@/contracts/auth";
 import {
-  type AuthAccount,
-} from "@/contracts/auth";
-import {
+  clearAuthenticatedCache,
   useRotateAliasMutation,
   useSessionQuery,
   useSignOutMutation,
@@ -28,10 +29,17 @@ type AuthContextValue = {
 const AuthContext = createContext<AuthContextValue | null>(null);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
+  const queryClient = useQueryClient();
   const session = useSessionQuery();
   const rotateAliasMutation = useRotateAliasMutation();
   const signOutMutation = useSignOutMutation();
   const account = session.data?.account ?? null;
+
+  useEffect(() => {
+    if (session.isSuccess && !session.data.account) {
+      clearAuthenticatedCache(queryClient);
+    }
+  }, [queryClient, session.data?.account, session.isSuccess]);
 
   const rotateAlias = useCallback(async () => {
     await rotateAliasMutation.mutateAsync();

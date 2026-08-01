@@ -67,7 +67,7 @@ export function apiUrl(path: string) {
 export class ApiClientError extends Error {
   constructor(
     message: string,
-    public readonly status: number,
+    public readonly statusCode: number,
     public readonly payload: unknown,
   ) {
     super(message);
